@@ -122,3 +122,8 @@ Możliwość tymczasowego zawieszenia nawyku na określony czas (np. urlop, chor
 8. Dodać loading spinners
 
 9. wylaczyc mozliwosc klikania na dni z elranu glownego
+10. dodac wiecej emoji
+11. dodac wiecej kolorow
+12. szukajka emoji
+13. drag and drop ustawianie kolejnosci
+14. podglad podsumowania dnia, tak zeby nie musiec scrollowac po wszystkich nawykach, tylko jednym najwchaniem na np date moc podejrzec szybko ktore nawyki spelnione a ktore nie
