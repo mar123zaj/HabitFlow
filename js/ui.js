@@ -1,6 +1,4 @@
-import { getIconSvg } from './icons.js';
-
-const TOTAL_DAYS = 125;
+const TOTAL_DAYS = 363;
 
 const SVG_CHECK = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
 const SVG_PLUS = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
@@ -130,13 +128,7 @@ export function renderHabitCard(habit, habitLogs) {
   icon.href = `habit-detail.html?id=${habit.id}`;
   icon.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0.2)`;
   icon.setAttribute('aria-label', `View ${habit.name} details`);
-
-  const svgMarkup = getIconSvg(habit.icon);
-  if (svgMarkup) {
-    icon.innerHTML = svgMarkup;
-  } else {
-    icon.textContent = habit.icon;
-  }
+  icon.textContent = habit.icon;
 
   const name = document.createElement('a');
   name.className = 'habit-card__name';

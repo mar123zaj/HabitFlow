@@ -32,10 +32,10 @@
         <input id="habit-name" type="text" class="form-input" placeholder="e.g. Morning run" maxlength="50" required>
       </div>
 
-      <!-- Icon Picker -->
+      <!-- Emoji Picker -->
       <fieldset class="form-group">
         <legend class="form-label">Icon</legend>
-        <div id="icon-grid" class="icon-grid"></div>
+        <div id="emoji-grid" class="emoji-grid"></div>
       </fieldset>
 
       <!-- Color Picker -->
@@ -69,7 +69,16 @@
   <script type="module">
     import { requireAuth } from './js/auth.js';
     import { createHabit, updateHabit, deleteHabit, getHabitById } from './js/habits.js';
-    import { ICONS, getIconById } from './js/icons.js';
+
+    const EMOJIS = [
+      '🏃', '💪', '🧘', '🚴', '🏊', '⚽', '🎾', '🥊',
+      '💧', '🥗', '🍎', '💊', '😴', '🧴', '🦷', '❤️',
+      '📖', '🧠', '🎯', '✍️', '📝', '🎨', '🎵', '🧩',
+      '💻', '📧', '🧹', '🌱', '☀️', '🐕', '📸', '💰',
+      '🙏', '😊', '🚶', '🎮', '☕', '📚', '🔥', '⭐',
+      '📋', '🎧', '💼', '🛡️', '🚫', '📵', '🍷', '⏰',
+      '🏠', '🌙', '🏆', '🧭', '🚀', '🎓', '🧘‍♂️', '💎',
+    ];
 
     const COLORS = [
       { name: 'blue',   hex: '#3b82f6' },
@@ -89,7 +98,7 @@
     const pageTitle = document.getElementById('page-title');
     const form = document.getElementById('habit-form');
     const nameInput = document.getElementById('habit-name');
-    const iconGrid = document.getElementById('icon-grid');
+    const emojiGrid = document.getElementById('emoji-grid');
     const colorGrid = document.getElementById('color-grid');
     const freqInput = document.getElementById('freq-input');
     const freqDec = document.getElementById('freq-dec');
@@ -98,27 +107,26 @@
     const deleteSection = document.getElementById('delete-section');
     const deleteBtn = document.getElementById('delete-btn');
 
-    let selectedIcon = null;
+    let selectedEmoji = null;
     let selectedColor = null;
     let frequency = 1;
     let editId = null;
 
-    // ── Build icon grid ──
-    for (const icon of ICONS) {
+    // ── Build emoji grid ──
+    for (const emoji of EMOJIS) {
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'icon-option';
-      btn.dataset.iconId = icon.id;
-      btn.innerHTML = icon.svg;
-      btn.setAttribute('aria-label', icon.name);
-      btn.addEventListener('click', () => selectIcon(icon.id, btn));
-      iconGrid.appendChild(btn);
+      btn.className = 'emoji-option';
+      btn.textContent = emoji;
+      btn.setAttribute('aria-label', emoji);
+      btn.addEventListener('click', () => selectEmoji(emoji, btn));
+      emojiGrid.appendChild(btn);
     }
 
-    function selectIcon(iconId, btn) {
-      selectedIcon = iconId;
-      iconGrid.querySelectorAll('.icon-option').forEach((b) => b.classList.remove('icon-option--selected'));
-      btn.classList.add('icon-option--selected');
+    function selectEmoji(emoji, btn) {
+      selectedEmoji = emoji;
+      emojiGrid.querySelectorAll('.emoji-option').forEach((b) => b.classList.remove('emoji-option--selected'));
+      btn.classList.add('emoji-option--selected');
     }
 
     // ── Build color grid ──
@@ -178,21 +186,10 @@
       frequency = habit.daily_target;
       updateFrequency();
 
-      // Select icon
-      const iconBtn = [...iconGrid.children].find((b) => b.dataset.iconId === habit.icon);
-      if (iconBtn) {
-        selectIcon(habit.icon, iconBtn);
-      } else {
-        // Legacy emoji — create a temporary button to display it
-        selectedIcon = habit.icon;
-        const legacyBtn = document.createElement('button');
-        legacyBtn.type = 'button';
-        legacyBtn.className = 'icon-option icon-option--selected icon-option--legacy';
-        legacyBtn.textContent = habit.icon;
-        legacyBtn.setAttribute('aria-label', habit.icon);
-        legacyBtn.addEventListener('click', () => selectIcon(habit.icon, legacyBtn));
-        iconGrid.prepend(legacyBtn);
-      }
+      // Select emoji
+      const emojiBtn = [...emojiGrid.children].find((b) => b.textContent === habit.icon);
+      if (emojiBtn) selectEmoji(habit.icon, emojiBtn);
+      else selectedEmoji = habit.icon;
 
       // Select color
       const colorBtn = [...colorGrid.children].find((b) => b.style.backgroundColor === hexToRgbStr(habit.color));
@@ -214,14 +211,14 @@
       const name = nameInput.value.trim();
 
       if (!name) { nameInput.focus(); return; }
-      if (!selectedIcon) { alert('Please select an icon.'); return; }
+      if (!selectedEmoji) { alert('Please select an icon.'); return; }
       if (!selectedColor) { alert('Please select a color.'); return; }
 
       saveBtn.classList.add('btn--loading');
       saveBtn.innerHTML = '<span class="spinner"></span>';
 
       try {
-        const payload = { name, icon: selectedIcon, color: selectedColor, dailyTarget: frequency };
+        const payload = { name, icon: selectedEmoji, color: selectedColor, dailyTarget: frequency };
         if (editId) {
           await updateHabit(editId, payload);
         } else {

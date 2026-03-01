@@ -63,7 +63,6 @@
     import { getHabitById } from './js/habits.js';
     import { fetchLogs, fetchAllLogs, toggleLog } from './js/logs.js';
     import { getLocalDate, getDateRange, groupLogsByHabit, renderDotGrid, hexToRgb } from './js/ui.js';
-    import { getIconSvg } from './js/icons.js';
 
     const params = new URLSearchParams(window.location.search);
     const habitId = params.get('id');
@@ -90,13 +89,7 @@
       habitNameEl.textContent = habit.name;
       habitFreqEl.textContent = habit.daily_target > 1 ? `(${habit.daily_target}x)` : '';
       editLink.href = `habit-form.html?id=${habit.id}`;
-
-      const svgMarkup = getIconSvg(habit.icon);
-      if (svgMarkup) {
-        habitIconEl.innerHTML = svgMarkup;
-      } else {
-        habitIconEl.textContent = habit.icon;
-      }
+      habitIconEl.textContent = habit.icon;
     }
 
     async function loadMonth() {
