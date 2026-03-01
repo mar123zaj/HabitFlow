@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0d0d0d">
+  <title>HabitFlow — Habit</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon-192.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/reset.css">
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <div class="container form-page">
+    <header class="form-header">
+      <h1 id="page-title" class="form-header__title">New Habit</h1>
+      <a href="index.html" class="icon-btn" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </a>
+    </header>
+
+    <form id="habit-form" novalidate>
+      <!-- Name -->
+      <div class="form-group">
+        <label for="habit-name" class="form-label">Name</label>
+        <input id="habit-name" type="text" class="form-input" placeholder="e.g. Morning run" maxlength="50" required>
+      </div>
+
+      <!-- Emoji Picker -->
+      <fieldset class="form-group">
+        <legend class="form-label">Icon</legend>
+        <div id="emoji-grid" class="emoji-grid"></div>
+      </fieldset>
+
+      <!-- Color Picker -->
+      <fieldset class="form-group">
+        <legend class="form-label">Color</legend>
+        <div id="color-grid" class="color-grid"></div>
+      </fieldset>
+
+      <!-- Daily Frequency -->
+      <div class="form-group">
+        <label class="form-label">Daily frequency</label>
+        <div class="stepper">
+          <button id="freq-dec" type="button" class="stepper__btn" aria-label="Decrease frequency">&minus;</button>
+          <span id="freq-value" class="stepper__value">1</span>
+          <button id="freq-inc" type="button" class="stepper__btn" aria-label="Increase frequency">+</button>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="form-actions">
+        <a href="index.html" class="btn btn--secondary">Cancel</a>
+        <button id="save-btn" type="submit" class="btn btn--primary">Save</button>
+      </div>
+
+      <div id="delete-section" class="form-actions hidden">
+        <button id="delete-btn" type="button" class="btn btn--danger">Delete habit</button>
+      </div>
+    </form>
+  </div>
+
+  <script type="module">
+    import { requireAuth } from './js/auth.js';
+    import { createHabit, updateHabit, deleteHabit, getHabitById } from './js/habits.js';
+
+    const EMOJIS = [
+      '🏃', '💪', '🧘', '🚴', '🏊', '⚽', '🎾', '🥊',
+      '💧', '🥗', '🍎', '💊', '😴', '🧴', '🦷', '❤️',
+      '📖', '🧠', '🎯', '✍️', '📝', '🎨', '🎵', '🧩',
+      '💻', '📧', '🧹', '🌱', '☀️', '🐕', '📸', '💰',
+      '🙏', '😊', '🚶', '🎮', '☕', '📚', '🔥', '⭐',
+    ];
+
+    const COLORS = [
+      { name: 'blue',   hex: '#3b82f6' },
+      { name: 'green',  hex: '#22c55e' },
+      { name: 'purple', hex: '#a855f7' },
+      { name: 'red',    hex: '#ef4444' },
+      { name: 'orange', hex: '#f97316' },
+      { name: 'yellow', hex: '#eab308' },
+      { name: 'pink',   hex: '#ec4899' },
+      { name: 'teal',   hex: '#14b8a6' },
+      { name: 'gray',   hex: '#6b7280' },
+      { name: 'white',  hex: '#e5e7eb' },
+      { name: 'lime',   hex: '#84cc16' },
+      { name: 'indigo', hex: '#6366f1' },
+    ];
+
+    const pageTitle = document.getElementById('page-title');
+    const form = document.getElementById('habit-form');
+    const nameInput = document.getElementById('habit-name');
+    const emojiGrid = document.getElementById('emoji-grid');
+    const colorGrid = document.getElementById('color-grid');
+    const freqValue = document.getElementById('freq-value');
+    const freqDec = document.getElementById('freq-dec');
+    const freqInc = document.getElementById('freq-inc');
+    const saveBtn = document.getElementById('save-btn');
+    const deleteSection = document.getElementById('delete-section');
+    const deleteBtn = document.getElementById('delete-btn');
+
+    let selectedEmoji = null;
+    let selectedColor = null;
+    let frequency = 1;
+    let editId = null;
+
+    // ── Build emoji grid ──
+    for (const emoji of EMOJIS) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'emoji-option';
+      btn.textContent = emoji;
+      btn.setAttribute('aria-label', emoji);
+      btn.addEventListener('click', () => selectEmoji(emoji, btn));
+      emojiGrid.appendChild(btn);
+    }
+
+    function selectEmoji(emoji, btn) {
+      selectedEmoji = emoji;
+      emojiGrid.querySelectorAll('.emoji-option').forEach((b) => b.classList.remove('emoji-option--selected'));
+      btn.classList.add('emoji-option--selected');
+    }
+
+    // ── Build color grid ──
+    const SVG_CHECK = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+
+    for (const color of COLORS) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'color-option';
+      btn.style.backgroundColor = color.hex;
+      btn.setAttribute('aria-label', color.name);
+      btn.innerHTML = `<span class="color-option__check">${SVG_CHECK}</span>`;
+      btn.addEventListener('click', () => selectColor(color.hex, btn));
+      colorGrid.appendChild(btn);
+    }
+
+    function selectColor(hex, btn) {
+      selectedColor = hex;
+      colorGrid.querySelectorAll('.color-option').forEach((b) => b.classList.remove('color-option--selected'));
+      btn.classList.add('color-option--selected');
+    }
+
+    // ── Frequency stepper ──
+    function updateFrequency() {
+      freqValue.textContent = frequency;
+      freqDec.disabled = frequency <= 1;
+      freqInc.disabled = frequency >= 3;
+    }
+
+    freqDec.addEventListener('click', () => {
+      if (frequency > 1) { frequency--; updateFrequency(); }
+    });
+
+    freqInc.addEventListener('click', () => {
+      if (frequency < 3) { frequency++; updateFrequency(); }
+    });
+
+    updateFrequency();
+
+    // ── Edit mode ──
+    const params = new URLSearchParams(window.location.search);
+    editId = params.get('id');
+
+    async function loadEditData() {
+      if (!editId) return;
+      pageTitle.textContent = 'Edit Habit';
+      deleteSection.classList.remove('hidden');
+
+      const habit = await getHabitById(editId);
+      nameInput.value = habit.name;
+      frequency = habit.daily_target;
+      updateFrequency();
+
+      // Select emoji
+      const emojiBtn = [...emojiGrid.children].find((b) => b.textContent === habit.icon);
+      if (emojiBtn) selectEmoji(habit.icon, emojiBtn);
+      else selectedEmoji = habit.icon;
+
+      // Select color
+      const colorBtn = [...colorGrid.children].find((b) => b.style.backgroundColor === hexToRgbStr(habit.color));
+      if (colorBtn) selectColor(habit.color, colorBtn);
+      else selectedColor = habit.color;
+    }
+
+    function hexToRgbStr(hex) {
+      const h = hex.replace('#', '');
+      const r = parseInt(h.substring(0, 2), 16);
+      const g = parseInt(h.substring(2, 4), 16);
+      const b = parseInt(h.substring(4, 6), 16);
+      return `rgb(${r}, ${g}, ${b})`;
+    }
+
+    // ── Form submit ──
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = nameInput.value.trim();
+
+      if (!name) { nameInput.focus(); return; }
+      if (!selectedEmoji) { alert('Please select an icon.'); return; }
+      if (!selectedColor) { alert('Please select a color.'); return; }
+
+      saveBtn.classList.add('btn--loading');
+      saveBtn.innerHTML = '<span class="spinner"></span>';
+
+      try {
+        const payload = { name, icon: selectedEmoji, color: selectedColor, dailyTarget: frequency };
+        if (editId) {
+          await updateHabit(editId, payload);
+        } else {
+          await createHabit(payload);
+        }
+        window.location.replace('index.html');
+      } catch (err) {
+        alert(err.message || 'Failed to save habit.');
+        saveBtn.classList.remove('btn--loading');
+        saveBtn.textContent = 'Save';
+      }
+    });
+
+    // ── Delete ──
+    deleteBtn.addEventListener('click', async () => {
+      if (!confirm('Delete this habit and all its history?')) return;
+      try {
+        await deleteHabit(editId);
+        window.location.replace('index.html');
+      } catch (err) {
+        alert(err.message || 'Failed to delete habit.');
+      }
+    });
+
+    // ── Init ──
+    requireAuth().then((session) => {
+      if (session) loadEditData();
+    });
+  </script>
+</body>
+</html>

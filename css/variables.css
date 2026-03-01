@@ -1,0 +1,66 @@
+:root {
+  /* Background */
+  --bg-primary: #0d0d0d;
+  --bg-card: #1a1a1a;
+  --bg-card-hover: #222222;
+  --bg-input: #1a1a1a;
+  --bg-button: #2a2a2a;
+
+  /* Text */
+  --text-primary: #ffffff;
+  --text-secondary: #888888;
+  --text-disabled: #555555;
+
+  /* Dot grid */
+  --dot-empty: #2a2a2a;
+
+  /* Accent */
+  --accent-default: #3b82f6;
+
+  /* Typography */
+  --font-family: 'DM Sans', sans-serif;
+  --font-size-name: 17px;
+  --font-weight-name: 500;
+  --font-size-meta: 13px;
+  --font-weight-meta: 400;
+  --font-size-heading: 20px;
+  --font-weight-heading: 600;
+
+  /* Card */
+  --card-radius: 16px;
+  --card-padding: 16px;
+
+  /* Icon */
+  --icon-size: 44px;
+  --icon-radius: 12px;
+
+  /* Dot grid */
+  --dot-size: 8px;
+  --dot-gap: 3px;
+  --dot-rows: 7;
+
+  /* Spacing */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+
+  /* Habit colors */
+  --color-blue: #3b82f6;
+  --color-green: #22c55e;
+  --color-purple: #a855f7;
+  --color-red: #ef4444;
+  --color-orange: #f97316;
+  --color-yellow: #eab308;
+  --color-pink: #ec4899;
+  --color-teal: #14b8a6;
+  --color-gray: #6b7280;
+  --color-white: #e5e7eb;
+  --color-lime: #84cc16;
+  --color-indigo: #6366f1;
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+}
