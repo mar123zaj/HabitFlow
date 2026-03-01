@@ -1,4 +1,6 @@
-const TOTAL_DAYS = 125; // 18 full weeks (126 days, 7 rows × 18 columns)
+import { getIconSvg } from './icons.js';
+
+const TOTAL_DAYS = 125;
 
 const SVG_CHECK = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
 const SVG_PLUS = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
@@ -41,7 +43,7 @@ function getDaysList() {
   return days;
 }
 
-function hexToRgb(hex) {
+export function hexToRgb(hex) {
   const h = hex.replace('#', '');
   return {
     r: parseInt(h.substring(0, 2), 16),
@@ -127,8 +129,14 @@ export function renderHabitCard(habit, habitLogs) {
   icon.className = 'habit-card__icon';
   icon.href = `habit-detail.html?id=${habit.id}`;
   icon.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0.2)`;
-  icon.textContent = habit.icon;
   icon.setAttribute('aria-label', `View ${habit.name} details`);
+
+  const svgMarkup = getIconSvg(habit.icon);
+  if (svgMarkup) {
+    icon.innerHTML = svgMarkup;
+  } else {
+    icon.textContent = habit.icon;
+  }
 
   const name = document.createElement('a');
   name.className = 'habit-card__name';

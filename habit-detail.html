@@ -6,7 +6,9 @@
   <meta name="theme-color" content="#0d0d0d">
   <title>HabitFlow — Details</title>
   <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="icons/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -29,6 +31,12 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
       </a>
     </header>
+
+    <!-- Dot grid overview -->
+    <section id="overview-section" class="detail-overview"></section>
+
+    <!-- Stats -->
+    <div id="stats-section" class="detail-stats"></div>
 
     <!-- Calendar navigation -->
     <nav class="calendar-nav">
@@ -53,7 +61,9 @@
   <script type="module">
     import { requireAuth } from './js/auth.js';
     import { getHabitById } from './js/habits.js';
-    import { fetchLogs, toggleLog } from './js/logs.js';
+    import { fetchLogs, fetchAllLogs, toggleLog } from './js/logs.js';
+    import { getLocalDate, getDateRange, groupLogsByHabit, renderDotGrid, hexToRgb } from './js/ui.js';
+    import { getIconSvg } from './js/icons.js';
 
     const params = new URLSearchParams(window.location.search);
     const habitId = params.get('id');
@@ -67,34 +77,26 @@
     const prevMonthBtn = document.getElementById('prev-month');
     const nextMonthBtn = document.getElementById('next-month');
     const calendarGrid = document.getElementById('calendar-grid');
+    const overviewSection = document.getElementById('overview-section');
+    const statsSection = document.getElementById('stats-section');
 
     let habit = null;
     let logsMap = {};
-    let viewYear, viewMonth; // 0-indexed month
-
-    function getLocalDate(date = new Date()) {
-      const y = date.getFullYear();
-      const m = String(date.getMonth() + 1).padStart(2, '0');
-      const d = String(date.getDate()).padStart(2, '0');
-      return `${y}-${m}-${d}`;
-    }
-
-    function hexToRgb(hex) {
-      const h = hex.replace('#', '');
-      return {
-        r: parseInt(h.substring(0, 2), 16),
-        g: parseInt(h.substring(2, 4), 16),
-        b: parseInt(h.substring(4, 6), 16),
-      };
-    }
+    let viewYear, viewMonth;
 
     function renderHeader() {
       const { r, g, b } = hexToRgb(habit.color);
-      habitIconEl.textContent = habit.icon;
       habitIconEl.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0.2)`;
       habitNameEl.textContent = habit.name;
       habitFreqEl.textContent = habit.daily_target > 1 ? `(${habit.daily_target}x)` : '';
       editLink.href = `habit-form.html?id=${habit.id}`;
+
+      const svgMarkup = getIconSvg(habit.icon);
+      if (svgMarkup) {
+        habitIconEl.innerHTML = svgMarkup;
+      } else {
+        habitIconEl.textContent = habit.icon;
+      }
     }
 
     async function loadMonth() {
@@ -216,13 +218,46 @@
       viewMonth--;
       if (viewMonth < 0) { viewMonth = 11; viewYear--; }
       loadMonth();
+      renderStats();
     });
 
     nextMonthBtn.addEventListener('click', () => {
       viewMonth++;
       if (viewMonth > 11) { viewMonth = 0; viewYear++; }
       loadMonth();
+      renderStats();
     });
+
+    async function renderOverview() {
+      const { startDate, endDate } = getDateRange();
+      const allLogs = await fetchAllLogs([habitId], startDate, endDate);
+      const logsGrouped = groupLogsByHabit(allLogs);
+      const habitLogs = logsGrouped[habitId] || {};
+
+      allLogsCache = allLogs;
+
+      overviewSection.innerHTML = '';
+      const dotGrid = renderDotGrid(habit, habitLogs);
+      overviewSection.appendChild(dotGrid);
+
+      renderStats();
+    }
+
+    let allLogsCache = [];
+
+    function renderStats() {
+      const totalCompletions = allLogsCache.reduce((sum, l) => sum + l.count, 0);
+      const monthPrefix = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}`;
+      const monthCompletions = allLogsCache
+        .filter((l) => l.log_date.startsWith(monthPrefix))
+        .reduce((sum, l) => sum + l.count, 0);
+
+      const monthName = new Date(viewYear, viewMonth).toLocaleDateString(undefined, { month: 'long' });
+
+      statsSection.innerHTML =
+        `<span class="detail-stat">Total: <strong>${totalCompletions}</strong></span>` +
+        `<span class="detail-stat">${monthName}: <strong>${monthCompletions}</strong></span>`;
+    }
 
     // Init
     requireAuth().then(async (session) => {
@@ -233,7 +268,7 @@
       const now = new Date();
       viewYear = now.getFullYear();
       viewMonth = now.getMonth();
-      await loadMonth();
+      await Promise.all([loadMonth(), renderOverview()]);
     });
   </script>
 </body>

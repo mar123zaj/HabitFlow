@@ -29,14 +29,15 @@
   /* Card */
   --card-radius: 16px;
   --card-padding: 16px;
+  --card-content-gap: 12px;
 
   /* Icon */
   --icon-size: 44px;
   --icon-radius: 12px;
 
   /* Dot grid */
-  --dot-size: 8px;
-  --dot-gap: 3px;
+  --dot-size: 7px;
+  --dot-gap: 2px;
   --dot-rows: 7;
 
   /* Spacing */
