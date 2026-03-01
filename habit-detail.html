@@ -32,6 +32,8 @@
       </a>
     </header>
 
+    <p id="habit-description" class="description-text hidden"></p>
+
     <!-- Dot grid overview -->
     <section id="overview-section" class="detail-overview"></section>
 
@@ -56,12 +58,33 @@
 
     <!-- Calendar grid -->
     <div id="calendar-grid" class="calendar-grid"></div>
+
+    <!-- Requirements popup -->
+    <div id="req-popup-overlay" class="popup-overlay hidden" role="dialog" aria-modal="true" aria-label="Requirements">
+      <div class="popup">
+        <div id="req-popup-header" class="popup__header"></div>
+        <div id="req-popup-body" class="popup__body"></div>
+        <div id="req-popup-actions" class="popup__actions">
+          <button id="req-popup-cancel" type="button" class="btn btn--secondary">Cancel</button>
+          <button id="req-popup-submit" type="button" class="btn btn--primary">Save</button>
+        </div>
+        <div id="req-popup-confirm" class="popup__confirm hidden">
+          <p class="popup__confirm-text">Not all requirements met.</p>
+          <div class="popup__actions">
+            <button id="req-popup-skip" type="button" class="btn btn--secondary">Skip</button>
+            <button id="req-popup-partial" type="button" class="btn btn--secondary">Partial</button>
+            <button id="req-popup-complete" type="button" class="btn btn--primary">Complete</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script type="module">
     import { requireAuth } from './js/auth.js';
     import { getHabitById } from './js/habits.js';
     import { fetchLogs, fetchAllLogs, toggleLog } from './js/logs.js';
+    import { fetchRequirements, fetchRequirementLogs, saveRequirementLogs, clearRequirementLogs } from './js/requirements.js';
     import { getLocalDate, getDateRange, groupLogsByHabit, renderDotGrid, hexToRgb } from './js/ui.js';
 
     const params = new URLSearchParams(window.location.search);
@@ -71,6 +94,7 @@
     const habitIconEl = document.getElementById('habit-icon');
     const habitNameEl = document.getElementById('habit-name');
     const habitFreqEl = document.getElementById('habit-freq');
+    const habitDescEl = document.getElementById('habit-description');
     const editLink = document.getElementById('edit-link');
     const monthLabel = document.getElementById('month-label');
     const prevMonthBtn = document.getElementById('prev-month');
@@ -82,6 +106,7 @@
     let habit = null;
     let logsMap = {};
     let viewYear, viewMonth;
+    let habitRequirements = [];
 
     function renderHeader() {
       const { r, g, b } = hexToRgb(habit.color);
@@ -90,6 +115,11 @@
       habitFreqEl.textContent = habit.daily_target > 1 ? `(${habit.daily_target}x)` : '';
       editLink.href = `habit-form.html?id=${habit.id}`;
       habitIconEl.textContent = habit.icon;
+
+      if (habit.description) {
+        habitDescEl.textContent = habit.description;
+        habitDescEl.classList.remove('hidden');
+      }
     }
 
     async function loadMonth() {
@@ -115,12 +145,12 @@
       calendarGrid.innerHTML = '';
       const { r, g, b } = hexToRgb(habit.color);
       const today = getLocalDate();
+      const activeWeekdays = habit.active_weekdays || [1, 2, 3, 4, 5, 6, 0];
+      const startDate = habit.start_date || null;
 
-      // Day of week for the 1st (0=Sun, convert to Mon=0)
       const firstDow = new Date(viewYear, viewMonth, 1).getDay();
-      const offset = (firstDow + 6) % 7; // Mon=0, Sun=6
+      const offset = (firstDow + 6) % 7;
 
-      // Empty cells before 1st
       for (let i = 0; i < offset; i++) {
         const empty = document.createElement('div');
         empty.className = 'calendar-cell calendar-cell--empty';
@@ -130,6 +160,9 @@
       for (let day = 1; day <= daysInMonth; day++) {
         const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         const count = logsMap[dateStr] || 0;
+        const dayOfWeek = new Date(viewYear, viewMonth, day).getDay();
+        const isApplicable = activeWeekdays.includes(dayOfWeek);
+        const isBeforeStart = startDate && dateStr < startDate;
 
         const cell = document.createElement('button');
         cell.type = 'button';
@@ -137,9 +170,20 @@
         cell.dataset.date = dateStr;
         cell.dataset.count = count;
 
-        if (dateStr === today) cell.classList.add('calendar-cell--today');
+        if (isBeforeStart) {
+          cell.className = 'calendar-cell calendar-cell--empty';
+          cell.disabled = true;
+          const daySpan = document.createElement('span');
+          daySpan.className = 'calendar-cell__day';
+          daySpan.textContent = day;
+          cell.appendChild(daySpan);
+          calendarGrid.appendChild(cell);
+          continue;
+        }
 
-        // Color based on completion
+        if (dateStr === today) cell.classList.add('calendar-cell--today');
+        if (!isApplicable && count === 0) cell.classList.add('calendar-cell--non-applicable');
+
         if (count >= habit.daily_target) {
           cell.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
           cell.style.color = '#fff';
@@ -166,11 +210,11 @@
 
     function updateCellVisual(cell, count) {
       const { r, g, b } = hexToRgb(habit.color);
-      const today = getLocalDate();
 
       cell.dataset.count = count;
       cell.style.backgroundColor = '';
       cell.style.color = '';
+      cell.classList.remove('calendar-cell--non-applicable');
 
       if (count >= habit.daily_target) {
         cell.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
@@ -178,6 +222,13 @@
       } else if (count > 0) {
         const opacity = Math.max(0.15, count / habit.daily_target);
         cell.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+      } else {
+        const dateStr = cell.dataset.date;
+        const dayOfWeek = new Date(dateStr + 'T00:00:00').getDay();
+        const activeWeekdays = habit.active_weekdays || [1, 2, 3, 4, 5, 6, 0];
+        if (!activeWeekdays.includes(dayOfWeek)) {
+          cell.classList.add('calendar-cell--non-applicable');
+        }
       }
 
       if (habit.daily_target > 1) {
@@ -186,7 +237,161 @@
       }
     }
 
-    // Cell click — toggle
+    // ── Requirements popup (static DOM, shared pattern) ──
+    const popupOverlay = document.getElementById('req-popup-overlay');
+    const popupHeader = document.getElementById('req-popup-header');
+    const popupBody = document.getElementById('req-popup-body');
+    const popupActions = document.getElementById('req-popup-actions');
+    const popupSubmit = document.getElementById('req-popup-submit');
+    const popupCancel = document.getElementById('req-popup-cancel');
+    const popupConfirm = document.getElementById('req-popup-confirm');
+    const popupSkip = document.getElementById('req-popup-skip');
+    const popupPartial = document.getElementById('req-popup-partial');
+    const popupComplete = document.getElementById('req-popup-complete');
+
+    let popupResolve = null;
+
+    function esc(str) {
+      const el = document.createElement('span');
+      el.textContent = str;
+      return el.innerHTML;
+    }
+
+    function collectLogs() {
+      if (!popupResolve) return null;
+      const { fields, date, iteration } = popupResolve;
+
+      const logs = [];
+      let allFulfilled = true;
+      let anyFilled = false;
+
+      for (const { req, field } of fields) {
+        if (req.type === 'boolean') {
+          const checked = field.querySelector('input[type="checkbox"]').checked;
+          logs.push({ requirement_id: req.id, habit_id: habitId, log_date: date, iteration, value: checked ? 1 : 0, fulfilled: checked });
+          if (checked) anyFilled = true;
+          if (!checked) allFulfilled = false;
+        } else {
+          const val = parseFloat(field.querySelector('input[type="number"]').value);
+          const fulfilled = !isNaN(val) && req.target_value != null && val >= req.target_value;
+          logs.push({ requirement_id: req.id, habit_id: habitId, log_date: date, iteration, value: isNaN(val) ? null : val, fulfilled });
+          if (!isNaN(val) && val > 0) anyFilled = true;
+          if (!fulfilled) allFulfilled = false;
+        }
+      }
+      return { logs, allFulfilled, anyFilled };
+    }
+
+    function closePopup() {
+      popupOverlay.classList.add('hidden');
+      popupResolve = null;
+    }
+
+    async function openRequirementsPopup(date, iteration) {
+      popupHeader.textContent = `${habit.icon} ${habit.name} — Iteration ${iteration}`;
+      popupBody.innerHTML = '';
+      popupActions.classList.remove('hidden');
+      popupConfirm.classList.add('hidden');
+
+      const existingLogs = await fetchRequirementLogs(habitId, date).catch(() => []);
+      const logsByReq = {};
+      for (const log of existingLogs) {
+        if (log.iteration === iteration) logsByReq[log.requirement_id] = log;
+      }
+
+      const fields = [];
+      for (const req of habitRequirements) {
+        const field = document.createElement('div');
+        field.className = 'requirement-input';
+        const prev = logsByReq[req.id];
+
+        if (req.type === 'boolean') {
+          const checked = prev ? prev.fulfilled : false;
+          field.innerHTML = `<label class="requirement-input__label"><input type="checkbox" data-req-id="${esc(req.id)}" ${checked ? 'checked' : ''}> ${esc(req.name)}</label>`;
+        } else {
+          const unitLabel = req.unit ? ` (${esc(req.unit)})` : '';
+          const targetHint = req.target_value != null ? ` ≥ ${esc(String(req.target_value))}` : '';
+          const prevVal = prev && prev.value != null ? prev.value : '';
+          field.innerHTML = `<label class="requirement-input__label">${esc(req.name)}${unitLabel}${targetHint}</label><input type="number" class="form-input" data-req-id="${esc(req.id)}" step="any" min="0" placeholder="Value" value="${esc(String(prevVal))}">`;
+        }
+        popupBody.appendChild(field);
+        fields.push({ req, field });
+      }
+
+      popupOverlay.classList.remove('hidden');
+      popupBody.querySelector('input')?.focus();
+
+      return new Promise((resolve) => {
+        popupResolve = { resolve, fields, date, iteration };
+      });
+    }
+
+    popupCancel.addEventListener('click', () => {
+      if (popupResolve) popupResolve.resolve(null);
+      closePopup();
+    });
+
+    popupOverlay.addEventListener('click', (e) => {
+      if (e.target === popupOverlay) {
+        if (popupResolve) popupResolve.resolve(null);
+        closePopup();
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && popupResolve) {
+        popupResolve.resolve(null);
+        closePopup();
+      }
+    });
+
+    popupSubmit.addEventListener('click', async () => {
+      const result = collectLogs();
+      if (!result) return;
+      const { logs, allFulfilled, anyFilled } = result;
+
+      if (allFulfilled) {
+        await saveRequirementLogs(logs);
+        const r = popupResolve;
+        closePopup();
+        r.resolve('completed');
+        return;
+      }
+
+      if (anyFilled) {
+        popupActions.classList.add('hidden');
+        popupConfirm.classList.remove('hidden');
+        return;
+      }
+
+      if (popupResolve) popupResolve.resolve(null);
+      closePopup();
+    });
+
+    popupComplete.addEventListener('click', async () => {
+      const result = collectLogs();
+      if (!result) return;
+      await saveRequirementLogs(result.logs);
+      const r = popupResolve;
+      closePopup();
+      r.resolve('completed');
+    });
+
+    popupPartial.addEventListener('click', async () => {
+      const result = collectLogs();
+      if (!result) return;
+      await saveRequirementLogs(result.logs);
+      const r = popupResolve;
+      closePopup();
+      r.resolve('partial');
+    });
+
+    popupSkip.addEventListener('click', () => {
+      if (popupResolve) popupResolve.resolve(null);
+      closePopup();
+    });
+
+    // Cell click — toggle (with requirements support)
     calendarGrid.addEventListener('click', async (e) => {
       const cell = e.target.closest('.calendar-cell:not(.calendar-cell--empty)');
       if (!cell) return;
@@ -195,7 +400,15 @@
       const currentCount = parseInt(cell.dataset.count, 10) || 0;
       const newCount = (currentCount + 1) % (habit.daily_target + 1);
 
-      // Optimistic
+      if (habitRequirements.length > 0 && newCount > 0) {
+        const popupResult = await openRequirementsPopup(date, newCount);
+        if (!popupResult) return;
+      }
+
+      if (habitRequirements.length > 0 && newCount === 0) {
+        clearRequirementLogs(habitId, date).catch(() => {});
+      }
+
       logsMap[date] = newCount;
       updateCellVisual(cell, newCount);
 
@@ -238,24 +451,48 @@
 
     let allLogsCache = [];
 
+    function countApplicableDays(fromDate, toDate) {
+      const activeWeekdays = habit.active_weekdays || [1, 2, 3, 4, 5, 6, 0];
+      let count = 0;
+      const d = new Date(fromDate + 'T00:00:00');
+      const end = new Date(toDate + 'T00:00:00');
+      while (d <= end) {
+        if (activeWeekdays.includes(d.getDay())) count++;
+        d.setDate(d.getDate() + 1);
+      }
+      return count;
+    }
+
     function renderStats() {
-      const totalCompletions = allLogsCache.reduce((sum, l) => sum + l.count, 0);
+      const today = getLocalDate();
+      const { startDate: gridStart } = getDateRange();
+      const effectiveStart = habit.start_date && habit.start_date > gridStart ? habit.start_date : gridStart;
+
+      const totalApplicable = countApplicableDays(effectiveStart, today);
+      const totalCompleted = allLogsCache.filter((l) => l.count >= habit.daily_target).length;
+
       const monthPrefix = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}`;
-      const monthCompletions = allLogsCache
-        .filter((l) => l.log_date.startsWith(monthPrefix))
-        .reduce((sum, l) => sum + l.count, 0);
+      const monthFirstDay = `${monthPrefix}-01`;
+      const monthLastDate = new Date(viewYear, viewMonth + 1, 0).getDate();
+      const monthLastDay = `${monthPrefix}-${String(monthLastDate).padStart(2, '0')}`;
+      const monthEnd = monthLastDay < today ? monthLastDay : today;
+      const monthStart = effectiveStart > monthFirstDay ? effectiveStart : monthFirstDay;
+      const monthApplicable = monthStart <= monthEnd ? countApplicableDays(monthStart, monthEnd) : 0;
+      const monthCompleted = allLogsCache
+        .filter((l) => l.log_date.startsWith(monthPrefix) && l.count >= habit.daily_target).length;
 
       const monthName = new Date(viewYear, viewMonth).toLocaleDateString(undefined, { month: 'long' });
 
       statsSection.innerHTML =
-        `<span class="detail-stat">Total: <strong>${totalCompletions}</strong></span>` +
-        `<span class="detail-stat">${monthName}: <strong>${monthCompletions}</strong></span>`;
+        `<span class="detail-stat">Total: <strong>${totalCompleted}/${totalApplicable}</strong></span>` +
+        `<span class="detail-stat">${monthName}: <strong>${monthCompleted}/${monthApplicable}</strong></span>`;
     }
 
     // Init
     requireAuth().then(async (session) => {
       if (!session) return;
       habit = await getHabitById(habitId);
+      habitRequirements = await fetchRequirements(habitId);
       renderHeader();
 
       const now = new Date();

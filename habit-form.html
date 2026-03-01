@@ -44,6 +44,13 @@
         <div id="color-grid" class="color-grid"></div>
       </fieldset>
 
+      <!-- Description -->
+      <div class="form-group">
+        <label for="habit-description" class="form-label">Description</label>
+        <textarea id="habit-description" class="form-input" placeholder="Add a note about this habit..." maxlength="256" rows="2"></textarea>
+        <span id="char-counter" class="char-counter">0 / 256</span>
+      </div>
+
       <!-- Daily Frequency -->
       <div class="form-group">
         <label for="freq-input" class="form-label">Daily frequency</label>
@@ -53,6 +60,25 @@
           <button id="freq-inc" type="button" class="stepper__btn" aria-label="Increase frequency">+</button>
         </div>
       </div>
+
+      <!-- Weekday Picker -->
+      <fieldset class="form-group">
+        <legend class="form-label">Active days</legend>
+        <div id="weekday-picker" class="weekday-picker"></div>
+      </fieldset>
+
+      <!-- Start Date -->
+      <div class="form-group">
+        <label for="habit-start-date" class="form-label">Start date</label>
+        <input id="habit-start-date" type="date" class="form-input">
+      </div>
+
+      <!-- Requirements Editor -->
+      <fieldset class="form-group" id="requirements-section">
+        <legend class="form-label">Requirements (optional)</legend>
+        <div id="requirements-list" class="requirements-editor"></div>
+        <button id="add-requirement-btn" type="button" class="btn btn--secondary" style="margin-top: var(--space-sm)">+ Add requirement</button>
+      </fieldset>
 
       <!-- Actions -->
       <div class="form-actions">
@@ -69,6 +95,7 @@
   <script type="module">
     import { requireAuth } from './js/auth.js';
     import { createHabit, updateHabit, deleteHabit, getHabitById } from './js/habits.js';
+    import { fetchRequirements, saveRequirements } from './js/requirements.js';
 
     const EMOJIS = [
       '🏃', '💪', '🧘', '🚴', '🏊', '⚽', '🎾', '🥊',
@@ -95,6 +122,25 @@
       { name: 'indigo', hex: '#6366f1' },
     ];
 
+    const WEEKDAYS = [
+      { value: 1, label: 'Mon' },
+      { value: 2, label: 'Tue' },
+      { value: 3, label: 'Wed' },
+      { value: 4, label: 'Thu' },
+      { value: 5, label: 'Fri' },
+      { value: 6, label: 'Sat' },
+      { value: 0, label: 'Sun' },
+    ];
+
+    const REQ_TYPES = [
+      { value: 'boolean', label: 'Checklist item' },
+      { value: 'duration', label: 'Duration', units: ['min', 'h'] },
+      { value: 'distance', label: 'Distance', units: ['km', 'mi'] },
+      { value: 'weight', label: 'Weight', units: ['kg', 'lbs'] },
+      { value: 'count', label: 'Repetitions', units: ['reps', 'sets'] },
+      { value: 'custom', label: 'Custom', units: [] },
+    ];
+
     const pageTitle = document.getElementById('page-title');
     const form = document.getElementById('habit-form');
     const nameInput = document.getElementById('habit-name');
@@ -106,11 +152,19 @@
     const saveBtn = document.getElementById('save-btn');
     const deleteSection = document.getElementById('delete-section');
     const deleteBtn = document.getElementById('delete-btn');
+    const descriptionInput = document.getElementById('habit-description');
+    const charCounter = document.getElementById('char-counter');
+    const startDateInput = document.getElementById('habit-start-date');
+    const weekdayPicker = document.getElementById('weekday-picker');
+    const requirementsList = document.getElementById('requirements-list');
+    const addReqBtn = document.getElementById('add-requirement-btn');
 
     let selectedEmoji = null;
     let selectedColor = null;
     let frequency = 1;
     let editId = null;
+    let activeWeekdays = [1, 2, 3, 4, 5, 6, 0];
+    let requirements = [];
 
     // ── Build emoji grid ──
     for (const emoji of EMOJIS) {
@@ -172,6 +226,132 @@
 
     updateFrequency();
 
+    // ── Description character counter ──
+    descriptionInput.addEventListener('input', () => {
+      charCounter.textContent = `${descriptionInput.value.length} / 256`;
+    });
+
+    // ── Start date validation ──
+    const today = new Date().toISOString().split('T')[0];
+    startDateInput.max = today;
+
+    // ── Weekday picker ──
+    function buildWeekdayPicker() {
+      weekdayPicker.innerHTML = '';
+      for (const day of WEEKDAYS) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'weekday-btn';
+        btn.textContent = day.label;
+        btn.dataset.value = day.value;
+        if (activeWeekdays.includes(day.value)) btn.classList.add('weekday-btn--active');
+        btn.addEventListener('click', () => toggleWeekday(day.value, btn));
+        weekdayPicker.appendChild(btn);
+      }
+    }
+
+    function toggleWeekday(value, btn) {
+      if (activeWeekdays.includes(value)) {
+        if (activeWeekdays.length <= 1) return;
+        activeWeekdays = activeWeekdays.filter((d) => d !== value);
+        btn.classList.remove('weekday-btn--active');
+      } else {
+        activeWeekdays.push(value);
+        btn.classList.add('weekday-btn--active');
+      }
+    }
+
+    buildWeekdayPicker();
+
+    // ── Requirements editor ──
+    function escAttr(str) {
+      return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function getTypeConfig(type) {
+      return REQ_TYPES.find((t) => t.value === type);
+    }
+
+    function renderRequirementRow(req, index) {
+      const row = document.createElement('div');
+      row.className = 'requirement-row';
+      row.dataset.index = index;
+
+      const typeConfig = getTypeConfig(req.type);
+      const isMeasurement = req.type !== 'boolean';
+
+      row.innerHTML = `
+        <div class="requirement-row__main">
+          <input type="text" class="form-input requirement-row__name" placeholder="Requirement name" value="${escAttr(req.name || '')}" data-field="name" required>
+          <select class="form-input requirement-row__type" data-field="type">
+            ${REQ_TYPES.map((t) => `<option value="${t.value}" ${t.value === req.type ? 'selected' : ''}>${t.label}</option>`).join('')}
+          </select>
+        </div>
+        <div class="requirement-row__fields ${isMeasurement ? '' : 'hidden'}">
+          ${req.type === 'custom'
+            ? `<input type="text" class="form-input requirement-row__unit" placeholder="Unit" value="${escAttr(req.unit || '')}" data-field="unit">`
+            : (typeConfig?.units?.length
+              ? `<select class="form-input requirement-row__unit" data-field="unit">
+                  ${typeConfig.units.map((u) => `<option value="${u}" ${u === req.unit ? 'selected' : ''}>${u}</option>`).join('')}
+                </select>`
+              : '')}
+          <input type="number" class="form-input requirement-row__target" placeholder="Target" value="${escAttr(String(req.target_value ?? ''))}" data-field="target_value" step="any" min="0">
+        </div>
+        <div class="requirement-row__actions">
+          <button type="button" class="icon-btn requirement-row__up" aria-label="Move up" ${index === 0 ? 'disabled' : ''}>↑</button>
+          <button type="button" class="icon-btn requirement-row__down" aria-label="Move down" ${index === requirements.length - 1 ? 'disabled' : ''}>↓</button>
+          <button type="button" class="icon-btn requirement-row__delete" aria-label="Remove">✕</button>
+        </div>
+      `;
+
+      row.querySelector('.requirement-row__type').addEventListener('change', (e) => {
+        req.type = e.target.value;
+        req.unit = getTypeConfig(req.type)?.units?.[0] || '';
+        req.target_value = req.type === 'boolean' ? null : req.target_value;
+        renderAllRequirements();
+      });
+
+      row.querySelector('.requirement-row__name').addEventListener('input', (e) => { req.name = e.target.value; });
+
+      const unitEl = row.querySelector('[data-field="unit"]');
+      if (unitEl) unitEl.addEventListener('input', (e) => { req.unit = e.target.value; });
+      if (unitEl) unitEl.addEventListener('change', (e) => { req.unit = e.target.value; });
+
+      const targetEl = row.querySelector('[data-field="target_value"]');
+      if (targetEl) targetEl.addEventListener('input', (e) => { req.target_value = e.target.value ? parseFloat(e.target.value) : null; });
+
+      row.querySelector('.requirement-row__up').addEventListener('click', () => {
+        if (index === 0) return;
+        [requirements[index - 1], requirements[index]] = [requirements[index], requirements[index - 1]];
+        renderAllRequirements();
+      });
+
+      row.querySelector('.requirement-row__down').addEventListener('click', () => {
+        if (index === requirements.length - 1) return;
+        [requirements[index], requirements[index + 1]] = [requirements[index + 1], requirements[index]];
+        renderAllRequirements();
+      });
+
+      row.querySelector('.requirement-row__delete').addEventListener('click', () => {
+        requirements.splice(index, 1);
+        renderAllRequirements();
+      });
+
+      return row;
+    }
+
+    function renderAllRequirements() {
+      requirementsList.innerHTML = '';
+      requirements.forEach((req, i) => {
+        requirementsList.appendChild(renderRequirementRow(req, i));
+      });
+    }
+
+    addReqBtn.addEventListener('click', () => {
+      requirements.push({ name: '', type: 'boolean', unit: null, target_value: null });
+      renderAllRequirements();
+    });
+
     // ── Edit mode ──
     const params = new URLSearchParams(window.location.search);
     editId = params.get('id');
@@ -186,15 +366,31 @@
       frequency = habit.daily_target;
       updateFrequency();
 
-      // Select emoji
+      if (habit.description) {
+        descriptionInput.value = habit.description;
+        charCounter.textContent = `${habit.description.length} / 256`;
+      }
+
+      if (habit.start_date) {
+        startDateInput.value = habit.start_date;
+      }
+
+      if (habit.active_weekdays) {
+        activeWeekdays = habit.active_weekdays;
+        buildWeekdayPicker();
+      }
+
       const emojiBtn = [...emojiGrid.children].find((b) => b.textContent === habit.icon);
       if (emojiBtn) selectEmoji(habit.icon, emojiBtn);
       else selectedEmoji = habit.icon;
 
-      // Select color
       const colorBtn = [...colorGrid.children].find((b) => b.style.backgroundColor === hexToRgbStr(habit.color));
       if (colorBtn) selectColor(habit.color, colorBtn);
       else selectedColor = habit.color;
+
+      const existingReqs = await fetchRequirements(editId);
+      requirements = existingReqs.map((r) => ({ ...r }));
+      renderAllRequirements();
     }
 
     function hexToRgbStr(hex) {
@@ -214,16 +410,41 @@
       if (!selectedEmoji) { alert('Please select an icon.'); return; }
       if (!selectedColor) { alert('Please select a color.'); return; }
 
+      const invalidReq = requirements.find((r) => r.name.trim() === '');
+      if (invalidReq) { alert('All requirements must have a name.'); return; }
+
       saveBtn.classList.add('btn--loading');
       saveBtn.innerHTML = '<span class="spinner"></span>';
 
       try {
-        const payload = { name, icon: selectedEmoji, color: selectedColor, dailyTarget: frequency };
+        const payload = {
+          name,
+          icon: selectedEmoji,
+          color: selectedColor,
+          dailyTarget: frequency,
+          startDate: startDateInput.value || null,
+          activeWeekdays: activeWeekdays,
+          description: descriptionInput.value.trim() || null,
+        };
+
+        let habitId;
         if (editId) {
           await updateHabit(editId, payload);
+          habitId = editId;
         } else {
-          await createHabit(payload);
+          const created = await createHabit(payload);
+          habitId = created.id;
         }
+
+        await saveRequirements(habitId, requirements.map((r, i) => ({
+          id: r.id || undefined,
+          name: r.name.trim(),
+          type: r.type,
+          unit: r.type === 'boolean' ? null : (r.unit || null),
+          target_value: r.type === 'boolean' ? null : (r.target_value ?? null),
+          sort_order: i,
+        })));
+
         window.location.replace('index.html');
       } catch (err) {
         alert(err.message || 'Failed to save habit.');

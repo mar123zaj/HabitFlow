@@ -32,6 +32,26 @@
     </header>
 
     <main id="habit-list" class="habit-list"></main>
+
+    <!-- Requirements popup -->
+    <div id="req-popup-overlay" class="popup-overlay hidden" role="dialog" aria-modal="true" aria-label="Requirements">
+      <div class="popup">
+        <div id="req-popup-header" class="popup__header"></div>
+        <div id="req-popup-body" class="popup__body"></div>
+        <div id="req-popup-actions" class="popup__actions">
+          <button id="req-popup-cancel" type="button" class="btn btn--secondary">Cancel</button>
+          <button id="req-popup-submit" type="button" class="btn btn--primary">Save</button>
+        </div>
+        <div id="req-popup-confirm" class="popup__confirm hidden">
+          <p class="popup__confirm-text">Not all requirements met.</p>
+          <div class="popup__actions">
+            <button id="req-popup-skip" type="button" class="btn btn--secondary">Skip</button>
+            <button id="req-popup-partial" type="button" class="btn btn--secondary">Partial</button>
+            <button id="req-popup-complete" type="button" class="btn btn--primary">Complete</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script>

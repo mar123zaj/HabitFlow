@@ -1,4 +1,4 @@
-const CACHE_NAME = 'habitflow-v4';
+const CACHE_NAME = 'habitflow-v6';
 
 const STATIC_ASSETS = [
   './',
@@ -15,6 +15,7 @@ const STATIC_ASSETS = [
   './js/logs.js',
   './js/ui.js',
   './js/app.js',
+  './js/requirements.js',
   './manifest.json',
   './icons/favicon.svg',
   './icons/icon-192.png',

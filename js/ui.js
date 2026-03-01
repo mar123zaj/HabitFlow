@@ -56,9 +56,21 @@ export function renderDotGrid(habit, habitLogs) {
 
   const days = getDaysList();
   const { r, g, b } = hexToRgb(habit.color);
+  const startDate = habit.start_date || null;
+  const activeWeekdays = habit.active_weekdays || [1, 2, 3, 4, 5, 6, 0];
 
   for (const dateStr of days) {
+    if (startDate && dateStr < startDate) {
+      const blank = document.createElement('div');
+      blank.className = 'dot dot--blank';
+      container.appendChild(blank);
+      continue;
+    }
+
     const count = habitLogs[dateStr] || 0;
+    const dayOfWeek = new Date(dateStr + 'T00:00:00').getDay();
+    const isApplicable = activeWeekdays.includes(dayOfWeek);
+
     const dot = document.createElement('button');
     dot.className = 'dot';
     dot.type = 'button';
@@ -71,12 +83,13 @@ export function renderDotGrid(habit, habitLogs) {
     } else if (count > 0) {
       const opacity = Math.max(0.15, count / habit.daily_target);
       dot.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+    } else if (!isApplicable) {
+      dot.classList.add('dot--non-applicable');
     }
 
     container.appendChild(dot);
   }
 
-  // Auto-scroll to rightmost (newest) dots
   requestAnimationFrame(() => {
     container.scrollLeft = container.scrollWidth;
   });

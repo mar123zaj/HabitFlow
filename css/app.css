@@ -697,6 +697,215 @@ body {
   margin-top: 1px;
 }
 
+/* ── Description Text ── */
+
+.description-text {
+  font-size: var(--font-size-meta);
+  color: var(--text-secondary);
+  padding: 0 0 var(--space-sm);
+  line-height: 1.4;
+}
+
+/* ── Character Counter ── */
+
+.char-counter {
+  display: block;
+  text-align: right;
+  font-size: 11px;
+  color: var(--text-disabled);
+  margin-top: var(--space-xs);
+}
+
+/* ── Weekday Picker ── */
+
+.weekday-picker {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.weekday-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: var(--font-weight-name);
+  background-color: var(--bg-button);
+  color: var(--text-secondary);
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.weekday-btn:active {
+  transform: scale(0.92);
+}
+
+.weekday-btn--active {
+  background-color: var(--accent-default);
+  color: var(--text-primary);
+}
+
+/* ── Dot Grid Variants ── */
+
+.dot--blank {
+  background-color: transparent !important;
+  cursor: default;
+  pointer-events: none;
+}
+
+.dot--non-applicable {
+  background-color: var(--dot-empty);
+  opacity: 0.35;
+  transform: scale(0.7);
+}
+
+.dot--non-applicable:active {
+  transform: scale(1);
+}
+
+/* ── Calendar Cell Variants ── */
+
+.calendar-cell--non-applicable {
+  opacity: 0.4;
+}
+
+/* ── Requirements Editor ── */
+
+.requirements-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.requirement-row {
+  background-color: var(--bg-card);
+  border-radius: var(--icon-radius);
+  padding: var(--space-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.requirement-row__main {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.requirement-row__name {
+  flex: 1;
+  min-width: 0;
+}
+
+.requirement-row__type {
+  width: 140px;
+  flex-shrink: 0;
+}
+
+.requirement-row__fields {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.requirement-row__unit {
+  width: 80px;
+  flex-shrink: 0;
+}
+
+.requirement-row__target {
+  flex: 1;
+  min-width: 0;
+}
+
+.requirement-row__actions {
+  display: flex;
+  gap: var(--space-xs);
+  justify-content: flex-end;
+}
+
+.requirement-row__actions .icon-btn {
+  width: 32px;
+  height: 32px;
+  font-size: 14px;
+}
+
+/* ── Popup / Modal ── */
+
+.popup-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: var(--space-md);
+}
+
+.popup {
+  background-color: var(--bg-card);
+  border-radius: var(--card-radius);
+  width: 100%;
+  max-width: 400px;
+  max-height: 80vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.popup__header {
+  padding: var(--space-md);
+  font-size: var(--font-size-name);
+  font-weight: var(--font-weight-heading);
+  border-bottom: 1px solid var(--bg-card-hover);
+}
+
+.popup__body {
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.popup__actions {
+  padding: var(--space-sm) var(--space-md) var(--space-md);
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.popup__confirm {
+  padding: var(--space-sm) var(--space-md) var(--space-md);
+}
+
+.popup__confirm-text {
+  font-size: var(--font-size-meta);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-sm);
+  text-align: center;
+}
+
+/* ── Requirement Input (popup) ── */
+
+.requirement-input {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.requirement-input__label {
+  font-size: var(--font-size-meta);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.requirement-input__label input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--accent-default);
+}
+
 /* ── Utility ── */
 
 .sr-only {
