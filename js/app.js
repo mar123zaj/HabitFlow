@@ -43,7 +43,8 @@ function updateDotVisual(dot, count, dailyTarget, color) {
   if (count >= dailyTarget) {
     dot.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
   } else if (count > 0) {
-    dot.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0.4)`;
+    const opacity = Math.max(0.15, count / dailyTarget);
+    dot.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${opacity})`;
   } else {
     dot.style.backgroundColor = '';
   }

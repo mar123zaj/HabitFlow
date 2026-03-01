@@ -69,7 +69,8 @@ export function renderDotGrid(habit, habitLogs) {
     if (count >= habit.daily_target) {
       dot.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
     } else if (count > 0) {
-      dot.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0.4)`;
+      const opacity = Math.max(0.15, count / habit.daily_target);
+      dot.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${opacity})`;
     }
 
     container.appendChild(dot);
@@ -98,7 +99,8 @@ export function renderActionButton(habit, todayCount) {
     btn.innerHTML = SVG_CHECK;
   } else if (todayCount > 0) {
     btn.classList.add('action-btn--partial');
-    btn.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0.4)`;
+    const opacity = Math.max(0.15, todayCount / habit.daily_target);
+    btn.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${opacity})`;
     btn.innerHTML = habit.daily_target === 1 ? SVG_CHECK : SVG_PLUS;
   } else {
     btn.classList.add('action-btn--empty');
@@ -123,15 +125,17 @@ export function renderHabitCard(habit, habitLogs) {
 
   const icon = document.createElement('a');
   icon.className = 'habit-card__icon';
-  icon.href = `habit-form.html?id=${habit.id}`;
+  icon.href = `habit-detail.html?id=${habit.id}`;
   icon.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0.2)`;
   icon.textContent = habit.icon;
-  icon.setAttribute('aria-label', `Edit ${habit.name}`);
+  icon.setAttribute('aria-label', `View ${habit.name} details`);
 
   const name = document.createElement('a');
   name.className = 'habit-card__name';
-  name.href = `habit-form.html?id=${habit.id}`;
-  name.textContent = habit.name;
+  name.href = `habit-detail.html?id=${habit.id}`;
+  name.textContent = habit.daily_target > 1
+    ? `${habit.name} (${habit.daily_target}x)`
+    : habit.name;
 
   const actionBtn = renderActionButton(habit, todayCount);
 

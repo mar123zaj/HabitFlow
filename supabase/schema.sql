@@ -10,7 +10,7 @@ CREATE TABLE habits (
     icon        TEXT NOT NULL,
     color       TEXT NOT NULL,
     daily_target INT NOT NULL DEFAULT 1
-        CONSTRAINT chk_habits_daily_target CHECK (daily_target BETWEEN 1 AND 3),
+        CONSTRAINT chk_habits_daily_target CHECK (daily_target BETWEEN 1 AND 99),
     sort_order  INT NOT NULL DEFAULT 0,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     archived_at TIMESTAMPTZ

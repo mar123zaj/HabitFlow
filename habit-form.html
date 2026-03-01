@@ -44,10 +44,10 @@
 
       <!-- Daily Frequency -->
       <div class="form-group">
-        <label class="form-label">Daily frequency</label>
+        <label for="freq-input" class="form-label">Daily frequency</label>
         <div class="stepper">
           <button id="freq-dec" type="button" class="stepper__btn" aria-label="Decrease frequency">&minus;</button>
-          <span id="freq-value" class="stepper__value">1</span>
+          <input id="freq-input" type="number" class="stepper__input" value="1" min="1" max="99" inputmode="numeric">
           <button id="freq-inc" type="button" class="stepper__btn" aria-label="Increase frequency">+</button>
         </div>
       </div>
@@ -96,7 +96,7 @@
     const nameInput = document.getElementById('habit-name');
     const emojiGrid = document.getElementById('emoji-grid');
     const colorGrid = document.getElementById('color-grid');
-    const freqValue = document.getElementById('freq-value');
+    const freqInput = document.getElementById('freq-input');
     const freqDec = document.getElementById('freq-dec');
     const freqInc = document.getElementById('freq-inc');
     const saveBtn = document.getElementById('save-btn');
@@ -147,9 +147,9 @@
 
     // ── Frequency stepper ──
     function updateFrequency() {
-      freqValue.textContent = frequency;
+      freqInput.value = frequency;
       freqDec.disabled = frequency <= 1;
-      freqInc.disabled = frequency >= 3;
+      freqInc.disabled = frequency >= 99;
     }
 
     freqDec.addEventListener('click', () => {
@@ -157,7 +157,13 @@
     });
 
     freqInc.addEventListener('click', () => {
-      if (frequency < 3) { frequency++; updateFrequency(); }
+      if (frequency < 99) { frequency++; updateFrequency(); }
+    });
+
+    freqInput.addEventListener('change', () => {
+      const val = parseInt(freqInput.value, 10);
+      if (!isNaN(val) && val >= 1 && val <= 99) frequency = val;
+      updateFrequency();
     });
 
     updateFrequency();

@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0d0d0d">
+  <title>HabitFlow — Details</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon-192.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/reset.css">
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <div class="container form-page">
+    <header class="detail-header">
+      <a href="index.html" class="icon-btn" aria-label="Back">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </a>
+      <div class="detail-header__info">
+        <div id="habit-icon" class="detail-header__icon"></div>
+        <span id="habit-name" class="detail-header__name"></span>
+        <span id="habit-freq" class="detail-header__freq"></span>
+      </div>
+      <a id="edit-link" href="#" class="icon-btn" aria-label="Edit habit">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      </a>
+    </header>
+
+    <!-- Calendar navigation -->
+    <nav class="calendar-nav">
+      <button id="prev-month" class="icon-btn" type="button" aria-label="Previous month">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <span id="month-label" class="calendar-nav__label"></span>
+      <button id="next-month" class="icon-btn" type="button" aria-label="Next month">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </nav>
+
+    <!-- Weekday headers -->
+    <div class="calendar-weekdays">
+      <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+    </div>
+
+    <!-- Calendar grid -->
+    <div id="calendar-grid" class="calendar-grid"></div>
+  </div>
+
+  <script type="module">
+    import { requireAuth } from './js/auth.js';
+    import { getHabitById } from './js/habits.js';
+    import { fetchLogs, toggleLog } from './js/logs.js';
+
+    const params = new URLSearchParams(window.location.search);
+    const habitId = params.get('id');
+    if (!habitId) window.location.replace('index.html');
+
+    const habitIconEl = document.getElementById('habit-icon');
+    const habitNameEl = document.getElementById('habit-name');
+    const habitFreqEl = document.getElementById('habit-freq');
+    const editLink = document.getElementById('edit-link');
+    const monthLabel = document.getElementById('month-label');
+    const prevMonthBtn = document.getElementById('prev-month');
+    const nextMonthBtn = document.getElementById('next-month');
+    const calendarGrid = document.getElementById('calendar-grid');
+
+    let habit = null;
+    let logsMap = {};
+    let viewYear, viewMonth; // 0-indexed month
+
+    function getLocalDate(date = new Date()) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function hexToRgb(hex) {
+      const h = hex.replace('#', '');
+      return {
+        r: parseInt(h.substring(0, 2), 16),
+        g: parseInt(h.substring(2, 4), 16),
+        b: parseInt(h.substring(4, 6), 16),
+      };
+    }
+
+    function renderHeader() {
+      const { r, g, b } = hexToRgb(habit.color);
+      habitIconEl.textContent = habit.icon;
+      habitIconEl.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0.2)`;
+      habitNameEl.textContent = habit.name;
+      habitFreqEl.textContent = habit.daily_target > 1 ? `(${habit.daily_target}x)` : '';
+      editLink.href = `habit-form.html?id=${habit.id}`;
+    }
+
+    async function loadMonth() {
+      const firstDay = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-01`;
+      const lastDate = new Date(viewYear, viewMonth + 1, 0).getDate();
+      const lastDay = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(lastDate).padStart(2, '0')}`;
+
+      monthLabel.textContent = new Date(viewYear, viewMonth).toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'long',
+      });
+
+      const logs = await fetchLogs(habit.id, firstDay, lastDay);
+      logsMap = {};
+      for (const log of logs) {
+        logsMap[log.log_date] = log.count;
+      }
+
+      renderCalendar(lastDate);
+    }
+
+    function renderCalendar(daysInMonth) {
+      calendarGrid.innerHTML = '';
+      const { r, g, b } = hexToRgb(habit.color);
+      const today = getLocalDate();
+
+      // Day of week for the 1st (0=Sun, convert to Mon=0)
+      const firstDow = new Date(viewYear, viewMonth, 1).getDay();
+      const offset = (firstDow + 6) % 7; // Mon=0, Sun=6
+
+      // Empty cells before 1st
+      for (let i = 0; i < offset; i++) {
+        const empty = document.createElement('div');
+        empty.className = 'calendar-cell calendar-cell--empty';
+        calendarGrid.appendChild(empty);
+      }
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const count = logsMap[dateStr] || 0;
+
+        const cell = document.createElement('button');
+        cell.type = 'button';
+        cell.className = 'calendar-cell';
+        cell.dataset.date = dateStr;
+        cell.dataset.count = count;
+
+        if (dateStr === today) cell.classList.add('calendar-cell--today');
+
+        // Color based on completion
+        if (count >= habit.daily_target) {
+          cell.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
+          cell.style.color = '#fff';
+        } else if (count > 0) {
+          const opacity = Math.max(0.15, count / habit.daily_target);
+          cell.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+        }
+
+        const daySpan = document.createElement('span');
+        daySpan.className = 'calendar-cell__day';
+        daySpan.textContent = day;
+        cell.appendChild(daySpan);
+
+        if (habit.daily_target > 1) {
+          const countSpan = document.createElement('span');
+          countSpan.className = 'calendar-cell__count';
+          countSpan.textContent = `${count}/${habit.daily_target}`;
+          cell.appendChild(countSpan);
+        }
+
+        calendarGrid.appendChild(cell);
+      }
+    }
+
+    function updateCellVisual(cell, count) {
+      const { r, g, b } = hexToRgb(habit.color);
+      const today = getLocalDate();
+
+      cell.dataset.count = count;
+      cell.style.backgroundColor = '';
+      cell.style.color = '';
+
+      if (count >= habit.daily_target) {
+        cell.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
+        cell.style.color = '#fff';
+      } else if (count > 0) {
+        const opacity = Math.max(0.15, count / habit.daily_target);
+        cell.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+      }
+
+      if (habit.daily_target > 1) {
+        const countSpan = cell.querySelector('.calendar-cell__count');
+        if (countSpan) countSpan.textContent = `${count}/${habit.daily_target}`;
+      }
+    }
+
+    // Cell click — toggle
+    calendarGrid.addEventListener('click', async (e) => {
+      const cell = e.target.closest('.calendar-cell:not(.calendar-cell--empty)');
+      if (!cell) return;
+
+      const date = cell.dataset.date;
+      const currentCount = parseInt(cell.dataset.count, 10) || 0;
+      const newCount = (currentCount + 1) % (habit.daily_target + 1);
+
+      // Optimistic
+      logsMap[date] = newCount;
+      updateCellVisual(cell, newCount);
+
+      try {
+        await toggleLog(habit.id, date, currentCount, habit.daily_target);
+      } catch {
+        logsMap[date] = currentCount;
+        updateCellVisual(cell, currentCount);
+      }
+    });
+
+    prevMonthBtn.addEventListener('click', () => {
+      viewMonth--;
+      if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+      loadMonth();
+    });
+
+    nextMonthBtn.addEventListener('click', () => {
+      viewMonth++;
+      if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+      loadMonth();
+    });
+
+    // Init
+    requireAuth().then(async (session) => {
+      if (!session) return;
+      habit = await getHabitById(habitId);
+      renderHeader();
+
+      const now = new Date();
+      viewYear = now.getFullYear();
+      viewMonth = now.getMonth();
+      await loadMonth();
+    });
+  </script>
+</body>
+</html>

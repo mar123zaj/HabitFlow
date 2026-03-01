@@ -1,10 +1,11 @@
-const CACHE_NAME = 'habitflow-v1';
+const CACHE_NAME = 'habitflow-v2';
 
 const STATIC_ASSETS = [
   './',
   './index.html',
   './login.html',
   './habit-form.html',
+  './habit-detail.html',
   './css/reset.css',
   './css/variables.css',
   './css/app.css',
