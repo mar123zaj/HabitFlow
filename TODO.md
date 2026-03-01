@@ -117,3 +117,8 @@ Możliwość tymczasowego zawieszenia nawyku na określony czas (np. urlop, chor
 
 - Tabela `habits`: nowe kolumny `paused_from` (DATE, nullable) i `paused_until` (DATE, nullable)
 - Opcjonalnie tabela `habit_pauses`: id, habit_id, user_id, from_date, until_date, reason — do przechowywania historii pauz
+
+
+8. Dodać loading spinners
+
+9. wylaczyc mozliwosc klikania na dni z elranu glownego
