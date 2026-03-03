@@ -129,3 +129,4 @@ Możliwość tymczasowego zawieszenia nawyku na określony czas (np. urlop, chor
 14. podglad podsumowania dnia, tak zeby nie musiec scrollowac po wszystkich nawykach, tylko jednym najwchaniem na np date moc podejrzec szybko ktore nawyki spelnione a ktore nie
 15. uniemozliwic przyblizanie ekranu poprzez podwojne klimiecie na ekran(podobnie jak zwykle jest w apkach)
 16. w nawykach ktore nalezy wykonac raz nie rzuca sie tak bardzo w oczy ze jeszcze nie zostalo zrobione/odklikane - symbol ptaszka w kolku - wyglada niemal tak samo jak wykonane
+17. wyeliminowac suwak scrolla - dla zblizenia sie do app feeling
