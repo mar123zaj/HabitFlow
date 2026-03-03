@@ -127,3 +127,4 @@ Możliwość tymczasowego zawieszenia nawyku na określony czas (np. urlop, chor
 12. szukajka emoji
 13. drag and drop ustawianie kolejnosci
 14. podglad podsumowania dnia, tak zeby nie musiec scrollowac po wszystkich nawykach, tylko jednym najwchaniem na np date moc podejrzec szybko ktore nawyki spelnione a ktore nie
+15. uniemozliwic przyblizanie ekranu poprzez podwojne klimiecie na ekran(podobnie jak zwykle jest w apkach)
