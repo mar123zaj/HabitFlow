@@ -24,7 +24,7 @@ Podwójne tapnięcie na ekran powoduje zoom-in, co w natywnych aplikacjach nie w
 
 ---
 
-### 2. Ukrycie scrollbara strony (app feel)
+### ✅ ~~2. Ukrycie scrollbara strony (app feel)~~
 
 Widoczny systemowy scrollbar na stronie głównej i innych widokach psuje wrażenie natywnej aplikacji. Należy go ukryć zachowując pełną funkcjonalność scrollowania.
 

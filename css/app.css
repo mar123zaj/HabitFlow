@@ -4,6 +4,12 @@ body {
   font-family: var(--font-family);
   background-color: var(--bg-primary);
   color: var(--text-primary);
+  scrollbar-width: none;
+  overscroll-behavior: none;
+}
+
+body::-webkit-scrollbar {
+  display: none;
 }
 
 /* ── Layout ── */
