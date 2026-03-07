@@ -281,16 +281,6 @@ habitListEl.addEventListener('click', async (e) => {
     return;
   }
 
-  const dot = e.target.closest('.dot:not(.dot--blank)');
-  if (dot) {
-    const card = dot.closest('.habit-card');
-    const habit = findHabitForCard(card);
-    if (!habit) return;
-
-    const date = dot.dataset.date;
-    const currentCount = parseInt(dot.dataset.count, 10) || 0;
-    await handleToggle(habit, date, currentCount, dot, card);
-  }
 });
 
 logoutBtn.addEventListener('click', async () => {

@@ -50,7 +50,7 @@ export function hexToRgb(hex) {
   };
 }
 
-export function renderDotGrid(habit, habitLogs) {
+export function renderDotGrid(habit, habitLogs, { interactive = false } = {}) {
   const container = document.createElement('div');
   container.className = 'dot-grid';
 
@@ -71,9 +71,10 @@ export function renderDotGrid(habit, habitLogs) {
     const dayOfWeek = new Date(dateStr + 'T00:00:00').getDay();
     const isApplicable = activeWeekdays.includes(dayOfWeek);
 
-    const dot = document.createElement('button');
-    dot.className = 'dot';
-    dot.type = 'button';
+    const tag = interactive ? 'button' : 'div';
+    const dot = document.createElement(tag);
+    dot.className = interactive ? 'dot' : 'dot dot--readonly';
+    if (interactive) dot.type = 'button';
     dot.dataset.date = dateStr;
     dot.dataset.count = count;
     dot.setAttribute('aria-label', `${dateStr}: ${count}/${habit.daily_target}`);

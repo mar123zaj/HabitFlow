@@ -443,7 +443,7 @@
       allLogsCache = allLogs;
 
       overviewSection.innerHTML = '';
-      const dotGrid = renderDotGrid(habit, habitLogs);
+      const dotGrid = renderDotGrid(habit, habitLogs, { interactive: true });
       overviewSection.appendChild(dotGrid);
 
       renderStats();

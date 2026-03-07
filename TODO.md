@@ -68,7 +68,7 @@ Dla nawyków z `daily_target = 1` action button w stanie niewykonanym (`action-b
 
 ---
 
-### 4. Wyłączenie klikania historycznych dni na ekranie głównym
+### ✅ ~~4. Wyłączenie klikania historycznych dni na ekranie głównym~~
 
 Podczas scrollowania strony głównej w pionie użytkownik przypadkowo klika w historyczne doty (kropki) na dot gridzie, co toggleuje logi. Na małym ekranie mobilnym, gdzie dot grid jest gęsty, jest to częsty problem. Edycja historycznych dni powinna odbywać się wyłącznie z widoku kalendarza na `habit-detail.html`.
 

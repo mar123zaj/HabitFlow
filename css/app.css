@@ -192,8 +192,13 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-.dot:active {
+.dot:not(.dot--readonly):active {
   transform: scale(1.4);
+}
+
+.dot--readonly {
+  cursor: default;
+  pointer-events: none;
 }
 
 /* ── Empty State ── */
