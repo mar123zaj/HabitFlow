@@ -25,7 +25,7 @@
       <div id="auth-message" class="auth-message" role="status"></div>
 
       <form id="auth-form" class="auth-form" novalidate>
-        <div class="form-group">
+        <div id="email-group" class="form-group">
           <label for="email" class="form-label">Email</label>
           <input id="email" type="email" class="form-input" placeholder="you@example.com" autocomplete="email" required>
         </div>
@@ -33,6 +33,11 @@
         <div id="password-group" class="form-group">
           <label for="password" class="form-label">Password</label>
           <input id="password" type="password" class="form-input" placeholder="Min. 6 characters" autocomplete="current-password" minlength="6" required>
+        </div>
+
+        <div id="confirm-password-group" class="form-group hidden">
+          <label for="confirm-password" class="form-label">Confirm password</label>
+          <input id="confirm-password" type="password" class="form-input" placeholder="Repeat your new password" autocomplete="new-password" minlength="6">
         </div>
 
         <button id="submit-btn" type="submit" class="btn btn--primary">Log in</button>
@@ -49,12 +54,20 @@
   </main>
 
   <script type="module">
-    import { signIn, signUp, resetPassword, getSession } from './js/auth.js';
+    import { signIn, signUp, resetPassword, updatePassword, getSession, onAuthStateChange } from './js/auth.js';
+
+    const hash = window.location.hash;
+    const isRecoveryCallback = hash.includes('type=recovery');
+    const isSignupCallback = hash.includes('type=signup');
 
     const form = document.getElementById('auth-form');
     const emailInput = document.getElementById('email');
+    const emailGroup = document.getElementById('email-group');
     const passwordInput = document.getElementById('password');
+    const passwordLabel = document.querySelector('label[for="password"]');
     const passwordGroup = document.getElementById('password-group');
+    const confirmPasswordInput = document.getElementById('confirm-password');
+    const confirmPasswordGroup = document.getElementById('confirm-password-group');
     const submitBtn = document.getElementById('submit-btn');
     const toggleLink = document.getElementById('toggle-link');
     const authToggle = document.getElementById('auth-toggle');
@@ -63,7 +76,8 @@
     const errorEl = document.getElementById('auth-error');
     const messageEl = document.getElementById('auth-message');
 
-    let mode = 'login'; // 'login' | 'signup' | 'reset'
+    let mode = 'login';
+    let isFormSubmitting = false;
 
     function setMode(newMode) {
       mode = newMode;
@@ -72,27 +86,43 @@
       messageEl.textContent = '';
       messageEl.classList.remove('auth-message--visible');
 
+      emailGroup.classList.remove('hidden');
+      passwordGroup.classList.remove('hidden');
+      confirmPasswordGroup.classList.add('hidden');
+      authToggle.classList.remove('hidden');
+      authForgot.classList.remove('hidden');
+      passwordInput.required = true;
+      confirmPasswordInput.required = false;
+      passwordLabel.textContent = 'Password';
+      passwordInput.placeholder = 'Min. 6 characters';
+      passwordInput.autocomplete = 'current-password';
+
       if (mode === 'login') {
         submitBtn.textContent = 'Log in';
         toggleLink.textContent = 'Sign up';
         authToggle.firstChild.textContent = "Don't have an account? ";
-        passwordGroup.classList.remove('hidden');
-        authForgot.classList.remove('hidden');
-        passwordInput.required = true;
       } else if (mode === 'signup') {
         submitBtn.textContent = 'Sign up';
         toggleLink.textContent = 'Log in';
         authToggle.firstChild.textContent = 'Already have an account? ';
-        passwordGroup.classList.remove('hidden');
         authForgot.classList.add('hidden');
-        passwordInput.required = true;
-      } else {
+      } else if (mode === 'reset') {
         submitBtn.textContent = 'Send reset link';
         toggleLink.textContent = 'Log in';
         authToggle.firstChild.textContent = 'Back to ';
         passwordGroup.classList.add('hidden');
         authForgot.classList.add('hidden');
         passwordInput.required = false;
+      } else if (mode === 'update-password') {
+        submitBtn.textContent = 'Update password';
+        emailGroup.classList.add('hidden');
+        confirmPasswordGroup.classList.remove('hidden');
+        authToggle.classList.add('hidden');
+        authForgot.classList.add('hidden');
+        passwordLabel.textContent = 'New password';
+        passwordInput.placeholder = 'Min. 6 characters';
+        passwordInput.autocomplete = 'new-password';
+        confirmPasswordInput.required = true;
       }
     }
 
@@ -108,13 +138,15 @@
       errorEl.classList.remove('auth-error--visible');
     }
 
+    const BUTTON_TEXT = { login: 'Log in', signup: 'Sign up', reset: 'Send reset link', 'update-password': 'Update password' };
+
     function setLoading(loading) {
       if (loading) {
         submitBtn.classList.add('btn--loading');
         submitBtn.innerHTML = '<span class="spinner"></span>';
       } else {
         submitBtn.classList.remove('btn--loading');
-        setMode(mode);
+        submitBtn.textContent = BUTTON_TEXT[mode];
       }
     }
 
@@ -134,7 +166,7 @@
       const email = emailInput.value.trim();
       const password = passwordInput.value;
 
-      if (!email || !email.includes('@')) {
+      if (mode !== 'update-password' && (!email || !email.includes('@'))) {
         showError('Please enter a valid email address.');
         return;
       }
@@ -144,7 +176,16 @@
         return;
       }
 
+      if (mode === 'update-password') {
+        const confirmPassword = confirmPasswordInput.value;
+        if (password !== confirmPassword) {
+          showError('Passwords do not match.');
+          return;
+        }
+      }
+
       setLoading(true);
+      isFormSubmitting = true;
       try {
         if (mode === 'login') {
           await signIn(email, password);
@@ -152,21 +193,39 @@
         } else if (mode === 'signup') {
           await signUp(email, password);
           showMessage('Check your email to confirm your account.');
-        } else {
+        } else if (mode === 'reset') {
           await resetPassword(email);
           showMessage('Password reset link sent to your email.');
+        } else if (mode === 'update-password') {
+          await updatePassword(password);
+          showMessage('Password updated successfully!');
+          setTimeout(() => window.location.replace('index.html'), 1500);
+          return;
         }
       } catch (err) {
         showError(err.message || 'Something went wrong. Please try again.');
       } finally {
+        isFormSubmitting = false;
         setLoading(false);
       }
     });
 
-    // Redirect if already authenticated
-    getSession().then((session) => {
-      if (session) window.location.replace('index.html');
+    onAuthStateChange((event, session) => {
+      if (isFormSubmitting) return;
+
+      if (event === 'PASSWORD_RECOVERY') {
+        setMode('update-password');
+      } else if (event === 'SIGNED_IN' && isSignupCallback) {
+        showMessage('Email confirmed! Redirecting...');
+        setTimeout(() => window.location.replace('index.html'), 1500);
+      }
     });
+
+    if (!isRecoveryCallback && !isSignupCallback) {
+      getSession().then((session) => {
+        if (session) window.location.replace('index.html');
+      });
+    }
   </script>
 </body>
 </html>
