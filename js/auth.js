@@ -16,6 +16,28 @@ export async function signIn(email, password) {
   return data;
 }
 
+export async function resendConfirmation(email) {
+  const { error } = await supabase.auth.resend({ email, type: 'signup', options: { emailRedirectTo: getAuthRedirectUrl() } });
+  if (error) throw error;
+}
+
+const ERROR_MAP = {
+  'Invalid login credentials': 'Incorrect email or password. Please try again.',
+  'Email not confirmed': 'Please confirm your email first. Check your inbox.',
+  'User already registered': 'An account with this email already exists. Try logging in.',
+  'Password should be at least 6 characters': 'Password must be at least 6 characters.',
+  'Email rate limit exceeded': 'Too many attempts. Please wait a moment and try again.',
+  'For security purposes, you can only request this after': 'Please wait before requesting another email.',
+};
+
+export function mapAuthError(message) {
+  if (!message) return 'Something went wrong. Please try again.';
+  for (const [key, friendly] of Object.entries(ERROR_MAP)) {
+    if (message.includes(key)) return friendly;
+  }
+  return message;
+}
+
 export async function signOut() {
   const { error } = await supabase.auth.signOut();
   if (error) throw error;
