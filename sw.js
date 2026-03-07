@@ -1,4 +1,4 @@
-const CACHE_NAME = 'habitflow-v6';
+const CACHE_NAME = 'habitflow-v7';
 
 const STATIC_ASSETS = [
   './',

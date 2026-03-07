@@ -99,7 +99,7 @@ Podczas scrollowania strony głównej w pionie użytkownik przypadkowo klika w h
 
 ---
 
-### 5. Loading states (skeleton + spinner)
+### ✅ ~~5. Loading states (skeleton + spinner)~~
 
 Na stronie głównej i na `habit-detail.html` brak jakiegokolwiek feedbacku wizualnego podczas ładowania danych z Supabase. Użytkownik widzi pustą stronę, co na wolniejszych połączeniach wygląda jak błąd.
 
