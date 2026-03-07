@@ -558,11 +558,11 @@ body {
   align-items: center;
   text-align: center;
   gap: var(--space-md);
-  animation: fadeIn var(--transition-normal);
 }
 
 .auth-confirmation--visible {
   display: flex;
+  animation: fadeIn var(--transition-normal) forwards;
 }
 
 .auth-confirmation__icon {
