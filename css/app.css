@@ -595,16 +595,6 @@ body::-webkit-scrollbar {
   line-height: 1.5;
 }
 
-.auth-confirmation__resend.btn {
-  flex: none;
-  padding: var(--space-sm) var(--space-lg);
-}
-
-.auth-confirmation__resend:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
 .auth-confirmation__change {
   font-size: var(--font-size-meta);
   color: var(--text-secondary);

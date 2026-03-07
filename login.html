@@ -58,7 +58,6 @@
           We sent a confirmation link to<br>
           <span id="confirmation-email" class="auth-confirmation__email"></span>
         </p>
-        <button id="resend-btn" type="button" class="btn btn--secondary auth-confirmation__resend">Resend email</button>
         <p class="auth-confirmation__change">
           Wrong address? <a href="#" id="change-email-link">Use a different email</a>
         </p>
@@ -67,9 +66,7 @@
   </main>
 
   <script type="module">
-    import { signIn, signUp, resetPassword, updatePassword, resendConfirmation, mapAuthError, getSession, onAuthStateChange } from './js/auth.js';
-
-    const RESEND_COOLDOWN = 60;
+    import { signIn, signUp, resetPassword, updatePassword, mapAuthError, getSession, onAuthStateChange } from './js/auth.js';
 
     const hash = window.location.hash;
     const isRecoveryCallback = hash.includes('type=recovery');
@@ -92,13 +89,11 @@
     const messageEl = document.getElementById('auth-message');
     const confirmationEl = document.getElementById('auth-confirmation');
     const confirmationEmailEl = document.getElementById('confirmation-email');
-    const resendBtn = document.getElementById('resend-btn');
     const changeEmailLink = document.getElementById('change-email-link');
 
     let mode = 'login';
     let isFormSubmitting = false;
     let signupEmail = '';
-    let resendTimer = null;
 
     function setMode(newMode) {
       mode = newMode;
@@ -170,25 +165,6 @@
       errorEl.classList.remove('auth-error--visible');
       messageEl.classList.remove('auth-message--visible');
       confirmationEl.classList.add('auth-confirmation--visible');
-      startResendCooldown();
-    }
-
-    function startResendCooldown() {
-      let remaining = RESEND_COOLDOWN;
-      resendBtn.disabled = true;
-      resendBtn.textContent = `Resend email (${remaining}s)`;
-
-      clearInterval(resendTimer);
-      resendTimer = setInterval(() => {
-        remaining--;
-        if (remaining <= 0) {
-          clearInterval(resendTimer);
-          resendBtn.disabled = false;
-          resendBtn.textContent = 'Resend email';
-        } else {
-          resendBtn.textContent = `Resend email (${remaining}s)`;
-        }
-      }, 1000);
     }
 
     const BUTTON_TEXT = { login: 'Log in', signup: 'Sign up', reset: 'Send reset link', 'update-password': 'Update password' };
@@ -214,27 +190,8 @@
       setMode('reset');
     });
 
-    resendBtn.addEventListener('click', async () => {
-      if (!signupEmail) return;
-      resendBtn.disabled = true;
-      resendBtn.innerHTML = '<span class="spinner"></span>';
-      try {
-        await resendConfirmation(signupEmail);
-        resendBtn.textContent = 'Email sent!';
-        setTimeout(() => startResendCooldown(), 1500);
-      } catch (err) {
-        resendBtn.textContent = 'Resend email';
-        resendBtn.disabled = false;
-        showError(mapAuthError(err.message));
-        confirmationEl.classList.remove('auth-confirmation--visible');
-        form.classList.remove('hidden');
-        authToggle.classList.remove('hidden');
-      }
-    });
-
     changeEmailLink.addEventListener('click', (e) => {
       e.preventDefault();
-      clearInterval(resendTimer);
       setMode('signup');
       emailInput.value = signupEmail;
       emailInput.focus();

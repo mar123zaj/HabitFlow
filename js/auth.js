@@ -16,10 +16,6 @@ export async function signIn(email, password) {
   return data;
 }
 
-export async function resendConfirmation(email) {
-  const { error } = await supabase.auth.resend({ email, type: 'signup', options: { emailRedirectTo: getAuthRedirectUrl() } });
-  if (error) throw error;
-}
 
 const ERROR_MAP = {
   'Invalid login credentials': 'Incorrect email or password. Please try again.',
