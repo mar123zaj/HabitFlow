@@ -1,8 +1,9 @@
-const CACHE_NAME = 'habitflow-v7';
+const CACHE_NAME = 'habitflow-v8';
 
 const STATIC_ASSETS = [
   './',
   './index.html',
+  './charts.html',
   './login.html',
   './habit-form.html',
   './habit-detail.html',

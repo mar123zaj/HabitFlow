@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0d0d0d">
+  <title>HabitFlow — Charts</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="icons/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/reset.css">
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <div class="container">
+    <header class="charts-header">
+      <h1 class="charts-header__title">Habit<span class="brand-accent">Charts</span></h1>
+      <div class="metric-toggle">
+        <button id="metric-days" class="metric-btn metric-btn--active" type="button">Days</button>
+        <button id="metric-pct" class="metric-btn" type="button">%</button>
+      </div>
+    </header>
+
+    <div class="period-tabs">
+      <button id="tab-week" class="period-tab period-tab--active" type="button">Week</button>
+      <button id="tab-month" class="period-tab" type="button">Month</button>
+    </div>
+
+    <nav class="period-nav" aria-label="Period navigation">
+      <button id="prev-period" class="icon-btn" type="button" aria-label="Previous period">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <span id="period-label" class="period-nav__label"></span>
+      <button id="next-period" class="icon-btn" type="button" aria-label="Next period">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </nav>
+
+    <div class="chart-area" role="img" aria-label="Habit completion chart">
+      <div id="chart-bars" class="chart-bars"></div>
+    </div>
+  </div>
+
+  <nav class="bottom-nav" aria-label="Main navigation">
+    <a href="index.html" class="bottom-nav__tab">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      <span>Habits</span>
+    </a>
+    <a href="charts.html" class="bottom-nav__tab bottom-nav__tab--active" aria-current="page">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      <span>Charts</span>
+    </a>
+  </nav>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js');
+    }
+  </script>
+  <script type="module">
+    import { requireAuth } from './js/auth.js';
+    import { fetchHabits } from './js/habits.js';
+    import { fetchAllLogs } from './js/logs.js';
+    import { getLocalDate, hexToRgb, countApplicableDays } from './js/ui.js';
+
+    // ── State ──
+    let habits = [];
+    let mode = 'week';
+    let weekOffset = 0;
+    let viewYear, viewMonth;
+    let metricMode = localStorage.getItem('charts-metric') || 'days';
+    let cachedLogsMap = null;
+    let cachedPeriodKey = null;
+    let fetchInFlight = false;
+
+    // ── Elements ──
+    const chartBarsEl = document.getElementById('chart-bars');
+    const periodLabelEl = document.getElementById('period-label');
+    const prevBtn = document.getElementById('prev-period');
+    const nextBtn = document.getElementById('next-period');
+    const tabWeek = document.getElementById('tab-week');
+    const tabMonth = document.getElementById('tab-month');
+    const metricDaysBtn = document.getElementById('metric-days');
+    const metricPctBtn = document.getElementById('metric-pct');
+
+    // ── Period helpers ──
+    function getWeekRange(offset) {
+      const today = new Date();
+      const mondayOffset = (today.getDay() + 6) % 7;
+      const monday = new Date(today);
+      monday.setDate(today.getDate() - mondayOffset + offset * 7);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      return { start: getLocalDate(monday), end: getLocalDate(sunday) };
+    }
+
+    function getMonthRange() {
+      const first = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-01`;
+      const lastDate = new Date(viewYear, viewMonth + 1, 0).getDate();
+      const last = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(lastDate).padStart(2, '0')}`;
+      return { start: first, end: last };
+    }
+
+    function getPeriodRange() {
+      return mode === 'week' ? getWeekRange(weekOffset) : getMonthRange();
+    }
+
+    function formatWeekLabel(start, end) {
+      const s = new Date(start + 'T00:00:00');
+      const e = new Date(end + 'T00:00:00');
+      if (s.getMonth() === e.getMonth()) {
+        return `${s.toLocaleDateString('en', { month: 'short' })} ${s.getDate()}–${e.getDate()}, ${e.getFullYear()}`;
+      }
+      return `${s.toLocaleDateString('en', { month: 'short', day: 'numeric' })} – ${e.toLocaleDateString('en', { month: 'short', day: 'numeric' })}, ${e.getFullYear()}`;
+    }
+
+    function getPeriodLabel() {
+      const { start, end } = getPeriodRange();
+      if (mode === 'week') return formatWeekLabel(start, end);
+      return new Date(viewYear, viewMonth).toLocaleDateString('en', { year: 'numeric', month: 'long' });
+    }
+
+    function isCurrentPeriod() {
+      if (mode === 'week') return weekOffset === 0;
+      const now = new Date();
+      return viewYear === now.getFullYear() && viewMonth === now.getMonth();
+    }
+
+    function updateNav() {
+      periodLabelEl.textContent = getPeriodLabel();
+      nextBtn.disabled = isCurrentPeriod();
+    }
+
+    // ── Stats computation ──
+    function computeStats(habit, logsMap) {
+      const { start, end } = getPeriodRange();
+      const today = getLocalDate();
+      const effectiveEnd = end > today ? today : end;
+      const effectiveStart = habit.start_date && habit.start_date > start ? habit.start_date : start;
+
+      if (effectiveStart > effectiveEnd) return { applicable: 0, completed: 0, inactive: true };
+
+      const activeWeekdays = habit.active_weekdays || [1, 2, 3, 4, 5, 6, 0];
+      const applicable = countApplicableDays(effectiveStart, effectiveEnd, activeWeekdays);
+
+      const habitLogs = logsMap[habit.id] || {};
+      let completed = 0;
+      const d = new Date(effectiveStart + 'T00:00:00');
+      const endDate = new Date(effectiveEnd + 'T00:00:00');
+      while (d <= endDate) {
+        if ((habitLogs[getLocalDate(d)] || 0) >= habit.daily_target) completed++;
+        d.setDate(d.getDate() + 1);
+      }
+
+      return { applicable, completed, inactive: false };
+    }
+
+    // ── Rendering ──
+    function renderBars(logsMap) {
+      chartBarsEl.innerHTML = '';
+
+      if (!habits.length) {
+        chartBarsEl.innerHTML = '<div class="chart-empty">No habits yet</div>';
+        return;
+      }
+
+      habits.forEach((habit, i) => {
+        const { applicable, completed, inactive } = computeStats(habit, logsMap);
+        const { r, g, b } = hexToRgb(habit.color);
+        const color = `rgb(${r}, ${g}, ${b})`;
+        const pct = applicable > 0 ? Math.round((completed / applicable) * 100) : 0;
+
+        let metricLabel;
+        if (inactive) {
+          metricLabel = '—';
+        } else if (metricMode === 'pct') {
+          metricLabel = `${pct}%`;
+        } else {
+          metricLabel = applicable > 0 ? `${completed}/${applicable}` : '0';
+        }
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'chart-bar-wrapper';
+
+        const metric = document.createElement('span');
+        metric.className = 'chart-bar__metric';
+        metric.textContent = metricLabel;
+
+        const bar = document.createElement('div');
+        bar.className = 'chart-bar';
+        bar.style.borderColor = color;
+
+        if (!inactive && applicable > 0 && completed > 0) {
+          const fill = document.createElement('div');
+          fill.className = 'chart-bar__fill';
+          fill.style.height = `${pct}%`;
+          fill.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0.9)`;
+          fill.style.animationDelay = `${i * 60}ms`;
+          bar.appendChild(fill);
+        }
+
+        const emoji = document.createElement('span');
+        emoji.className = 'chart-bar__emoji';
+        emoji.textContent = habit.icon;
+        emoji.title = habit.name;
+
+        wrapper.appendChild(metric);
+        wrapper.appendChild(bar);
+        wrapper.appendChild(emoji);
+        chartBarsEl.appendChild(wrapper);
+      });
+    }
+
+    // ── Data loading ──
+    async function loadAndRender() {
+      const { start, end } = getPeriodRange();
+      const today = getLocalDate();
+      const effectiveEnd = end > today ? today : end;
+      const periodKey = `${mode}-${start}-${effectiveEnd}`;
+
+      updateNav();
+
+      if (cachedPeriodKey !== periodKey) {
+        if (fetchInFlight) return;
+        fetchInFlight = true;
+        chartBarsEl.innerHTML = '';
+        try {
+          const ids = habits.map((h) => h.id);
+          const logs = ids.length ? await fetchAllLogs(ids, start, effectiveEnd) : [];
+          cachedLogsMap = {};
+          for (const log of logs) {
+            if (!cachedLogsMap[log.habit_id]) cachedLogsMap[log.habit_id] = {};
+            cachedLogsMap[log.habit_id][log.log_date] = log.count;
+          }
+          cachedPeriodKey = periodKey;
+        } finally {
+          fetchInFlight = false;
+        }
+      }
+
+      renderBars(cachedLogsMap);
+    }
+
+    // ── Event listeners ──
+    tabWeek.addEventListener('click', () => {
+      if (mode === 'week') return;
+      mode = 'week';
+      tabWeek.classList.add('period-tab--active');
+      tabMonth.classList.remove('period-tab--active');
+      cachedPeriodKey = null;
+      loadAndRender();
+    });
+
+    tabMonth.addEventListener('click', () => {
+      if (mode === 'month') return;
+      mode = 'month';
+      tabMonth.classList.add('period-tab--active');
+      tabWeek.classList.remove('period-tab--active');
+      cachedPeriodKey = null;
+      loadAndRender();
+    });
+
+    prevBtn.addEventListener('click', () => {
+      if (mode === 'week') {
+        weekOffset--;
+      } else {
+        viewMonth--;
+        if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+      }
+      cachedPeriodKey = null;
+      loadAndRender();
+    });
+
+    nextBtn.addEventListener('click', () => {
+      if (isCurrentPeriod()) return;
+      if (mode === 'week') {
+        weekOffset++;
+      } else {
+        viewMonth++;
+        if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+      }
+      cachedPeriodKey = null;
+      loadAndRender();
+    });
+
+    metricDaysBtn.addEventListener('click', () => {
+      if (metricMode === 'days') return;
+      metricMode = 'days';
+      localStorage.setItem('charts-metric', 'days');
+      metricDaysBtn.classList.add('metric-btn--active');
+      metricPctBtn.classList.remove('metric-btn--active');
+      renderBars(cachedLogsMap || {});
+    });
+
+    metricPctBtn.addEventListener('click', () => {
+      if (metricMode === 'pct') return;
+      metricMode = 'pct';
+      localStorage.setItem('charts-metric', 'pct');
+      metricPctBtn.classList.add('metric-btn--active');
+      metricDaysBtn.classList.remove('metric-btn--active');
+      renderBars(cachedLogsMap || {});
+    });
+
+    // ── Init ──
+    requireAuth().then(async (session) => {
+      if (!session) return;
+
+      const now = new Date();
+      viewYear = now.getFullYear();
+      viewMonth = now.getMonth();
+
+      if (metricMode === 'pct') {
+        metricPctBtn.classList.add('metric-btn--active');
+        metricDaysBtn.classList.remove('metric-btn--active');
+      }
+
+      habits = await fetchHabits();
+      await loadAndRender();
+    });
+  </script>
+</body>
+</html>

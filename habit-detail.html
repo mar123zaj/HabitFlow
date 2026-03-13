@@ -126,7 +126,7 @@
     import { getHabitById } from './js/habits.js';
     import { fetchLogs, fetchAllLogs, toggleLog } from './js/logs.js';
     import { fetchRequirements, fetchRequirementLogs, saveRequirementLogs, clearRequirementLogs } from './js/requirements.js';
-    import { getLocalDate, getDateRange, groupLogsByHabit, renderDotGrid, hexToRgb } from './js/ui.js';
+    import { getLocalDate, getDateRange, groupLogsByHabit, renderDotGrid, hexToRgb, countApplicableDays } from './js/ui.js';
 
     const params = new URLSearchParams(window.location.search);
     const habitId = params.get('id');
@@ -492,24 +492,13 @@
 
     let allLogsCache = [];
 
-    function countApplicableDays(fromDate, toDate) {
-      const activeWeekdays = habit.active_weekdays || [1, 2, 3, 4, 5, 6, 0];
-      let count = 0;
-      const d = new Date(fromDate + 'T00:00:00');
-      const end = new Date(toDate + 'T00:00:00');
-      while (d <= end) {
-        if (activeWeekdays.includes(d.getDay())) count++;
-        d.setDate(d.getDate() + 1);
-      }
-      return count;
-    }
-
     function renderStats() {
       const today = getLocalDate();
       const { startDate: gridStart } = getDateRange();
       const effectiveStart = habit.start_date && habit.start_date > gridStart ? habit.start_date : gridStart;
+      const activeWeekdays = habit.active_weekdays || [1, 2, 3, 4, 5, 6, 0];
 
-      const totalApplicable = countApplicableDays(effectiveStart, today);
+      const totalApplicable = countApplicableDays(effectiveStart, today, activeWeekdays);
       const totalCompleted = allLogsCache.filter((l) => l.count >= habit.daily_target).length;
 
       const monthPrefix = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}`;
@@ -518,7 +507,7 @@
       const monthLastDay = `${monthPrefix}-${String(monthLastDate).padStart(2, '0')}`;
       const monthEnd = monthLastDay < today ? monthLastDay : today;
       const monthStart = effectiveStart > monthFirstDay ? effectiveStart : monthFirstDay;
-      const monthApplicable = monthStart <= monthEnd ? countApplicableDays(monthStart, monthEnd) : 0;
+      const monthApplicable = monthStart <= monthEnd ? countApplicableDays(monthStart, monthEnd, activeWeekdays) : 0;
       const monthCompleted = allLogsCache
         .filter((l) => l.log_date.startsWith(monthPrefix) && l.count >= habit.daily_target).length;
 

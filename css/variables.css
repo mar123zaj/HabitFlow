@@ -61,6 +61,9 @@
   --color-lime: #84cc16;
   --color-indigo: #6366f1;
 
+  /* Bottom navigation */
+  --bottom-nav-height: 64px;
+
   /* Transitions */
   --transition-fast: 150ms ease;
   --transition-normal: 250ms ease;
