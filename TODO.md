@@ -131,6 +131,72 @@ Na stronie głównej i na `habit-detail.html` brak jakiegokolwiek feedbacku wizu
 
 ---
 
+### 17. Bug: Statystyka "Total" na stronie szczegółów pokazuje 364 dni zamiast 365/366
+
+Na `habit-detail.html` statystyka "Total" bazuje na zakresie dot gridu (52 × 7 = 364 dni), ale powinna pokazywać pełny rok (365 lub 366 dni). Sam dot grid może zostać bez zmian (364 dni / 52 tygodnie ładnie pasuje do siatki 7 wierszy), natomiast obliczenie statystyki "Total" powinno używać prawidłowego zakresu 365/366 dni.
+
+#### Aktualne zachowanie
+
+- Statystyka "Total" pokazuje zakres 364 dni (wynikający z rozmiaru dot gridu)
+
+#### Docelowe zachowanie
+
+- Statystyka "Total" liczy zakres na 365 dni (lub 366 w roku przestępnym), niezależnie od rozmiaru dot gridu
+- Dot grid bez zmian (52 × 7 = 364 dni — ładna siatka)
+
+#### Pliki do zmiany
+
+- `habit-detail.html` — poprawka obliczenia zakresu dat dla statystyki "Total" (użyć 365/366 zamiast brać zakres z dot gridu)
+
+---
+
+### 18. Bug: Strona formularza nawyku scrolluje się horyzontalnie
+
+Na `habit-form.html` (tworzenie/edycja nawyku) strona pozwala na scroll lewo-prawo, co oznacza, że jakiś element wystaje poza viewport. Prawdopodobnie jeden z inputów, grid emoji lub grid kolorów jest za szeroki i powoduje overflow.
+
+#### Aktualne zachowanie
+
+- Strona `habit-form.html` ma horyzontalny scroll — użytkownik może przesuwać stronę w lewo/prawo
+- Efekt szczególnie widoczny na wąskich ekranach mobilnych
+
+#### Docelowe zachowanie
+
+- Brak horyzontalnego scrolla — cała zawartość mieści się w viewport
+- Wszystkie elementy formularza (inputy, emoji grid, color grid) respektują szerokość ekranu
+
+#### Zakres zmian
+
+- Zidentyfikować element powodujący overflow (debug: `* { outline: 1px solid red }`)
+- Dodać `overflow-x: hidden` jako tymczasowy fix lub naprawić źródłowy element
+- Prawdopodobny winowajca: input z domyślnym paddingiem/borderem przekraczającym `100%` lub grid z `gap` powodujący overflow
+
+#### Pliki do zmiany
+
+- `css/app.css` — poprawka szerokości problematycznego elementu
+- `habit-form.html` — ewentualne poprawki w strukturze HTML
+
+---
+
+### 19. Bug: Kliknięcie w kalendarz na stronie szczegółów nie aktualizuje dot gridu
+
+Na `habit-detail.html` po zaznaczeniu/odznaczeniu dnia w kalendarzu, dot grid (sekcja overview nad kalendarzem) nie odzwierciedla zmiany. Użytkownik musi odświeżyć stronę, żeby zobaczyć zaktualizowane kropki. Oba widoki powinny być zsynchronizowane — klik w kalendarz powinien natychmiast aktualizować odpowiednią kropkę w dot gridzie.
+
+#### Aktualne zachowanie
+
+- Kliknięcie dnia w kalendarzu toggleuje log i aktualizuje wizualnie tylko komórkę kalendarza
+- Dot grid nad kalendarzem pozostaje niezmieniony do momentu przeładowania strony
+
+#### Docelowe zachowanie
+
+- Po kliknięciu dnia w kalendarzu odpowiadająca kropka w dot gridzie natychmiast zmienia stan (kolor/wypełnienie)
+- Synchronizacja działa w obie strony — jeśli dot grid jest interaktywny, klik w kropkę aktualizuje też kalendarz
+
+#### Pliki do zmiany
+
+- `habit-detail.html` — po `toggleLog()` w handlerze kalendarza, odświeżyć odpowiednią kropkę w dot gridzie (albo przebudować cały grid, albo zaktualizować pojedynczy element po dacie)
+
+---
+
 ## Priorytet 2 — Średnia złożoność
 
 ---
