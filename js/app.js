@@ -117,7 +117,7 @@ async function loadData() {
     requirementsMap[req.habit_id].push(req);
   }
 
-  renderHabitList(habitListEl, habits, logsMap, selectedDate);
+  renderHabitList(habitListEl, habits, logsMap, selectedDate, true);
 }
 
 function updateDotVisual(dot, count, dailyTarget, color, habit) {

@@ -135,7 +135,7 @@ export function renderActionButton(habit, count) {
   return btn;
 }
 
-export function renderHabitCard(habit, habitLogs, selectedDate) {
+export function renderHabitCard(habit, habitLogs, selectedDate, index = 0, animate = false) {
   const date = selectedDate || getLocalDate();
   const count = habitLogs[date] || 0;
   const { r, g, b } = hexToRgb(habit.color);
@@ -143,6 +143,11 @@ export function renderHabitCard(habit, habitLogs, selectedDate) {
   const card = document.createElement('article');
   card.className = 'habit-card';
   card.dataset.habitId = habit.id;
+
+  if (animate) {
+    card.classList.add('habit-card--animate-in');
+    card.style.animationDelay = `${Math.min(index * 70, 400)}ms`;
+  }
 
   // Top row: icon + name + action button
   const top = document.createElement('div');
@@ -188,7 +193,7 @@ export function renderEmptyState() {
   return el;
 }
 
-export function renderHabitList(container, habits, logsMap, selectedDate) {
+export function renderHabitList(container, habits, logsMap, selectedDate, animate = false) {
   container.innerHTML = '';
 
   if (!habits.length) {
@@ -196,8 +201,8 @@ export function renderHabitList(container, habits, logsMap, selectedDate) {
     return;
   }
 
-  for (const habit of habits) {
+  habits.forEach((habit, i) => {
     const habitLogs = logsMap[habit.id] || {};
-    container.appendChild(renderHabitCard(habit, habitLogs, selectedDate));
-  }
+    container.appendChild(renderHabitCard(habit, habitLogs, selectedDate, i, animate));
+  });
 }
