@@ -1119,6 +1119,7 @@ body::-webkit-scrollbar {
 
 .bottom-nav__tab--active {
   color: var(--accent-default);
+  pointer-events: none;
 }
 
 /* ── Charts Page ── */
