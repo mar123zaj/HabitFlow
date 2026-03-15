@@ -109,22 +109,22 @@ export function renderDotGrid(habit, habitLogs, { interactive = false } = {}) {
   return container;
 }
 
-export function renderActionButton(habit, todayCount) {
+export function renderActionButton(habit, count) {
   const btn = document.createElement('button');
   btn.className = 'action-btn';
   btn.type = 'button';
   btn.dataset.habitId = habit.id;
-  btn.setAttribute('aria-label', `Toggle ${habit.name} today`);
+  btn.setAttribute('aria-label', `Toggle ${habit.name}`);
 
   const { r, g, b } = hexToRgb(habit.color);
 
-  if (todayCount >= habit.daily_target) {
+  if (count >= habit.daily_target) {
     btn.classList.add('action-btn--complete');
     btn.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
     btn.innerHTML = SVG_CHECK;
-  } else if (todayCount > 0) {
+  } else if (count > 0) {
     btn.classList.add('action-btn--partial');
-    const opacity = Math.max(0.15, todayCount / habit.daily_target);
+    const opacity = Math.max(0.15, count / habit.daily_target);
     btn.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${opacity})`;
     btn.innerHTML = habit.daily_target === 1 ? SVG_CHECK : SVG_PLUS;
   } else {
@@ -135,9 +135,9 @@ export function renderActionButton(habit, todayCount) {
   return btn;
 }
 
-export function renderHabitCard(habit, habitLogs) {
-  const today = getLocalDate();
-  const todayCount = habitLogs[today] || 0;
+export function renderHabitCard(habit, habitLogs, selectedDate) {
+  const date = selectedDate || getLocalDate();
+  const count = habitLogs[date] || 0;
   const { r, g, b } = hexToRgb(habit.color);
 
   const card = document.createElement('article');
@@ -162,7 +162,7 @@ export function renderHabitCard(habit, habitLogs) {
     ? `${habit.name} (${habit.daily_target}x)`
     : habit.name;
 
-  const actionBtn = renderActionButton(habit, todayCount);
+  const actionBtn = renderActionButton(habit, count);
 
   top.appendChild(icon);
   top.appendChild(name);
@@ -188,7 +188,7 @@ export function renderEmptyState() {
   return el;
 }
 
-export function renderHabitList(container, habits, logsMap) {
+export function renderHabitList(container, habits, logsMap, selectedDate) {
   container.innerHTML = '';
 
   if (!habits.length) {
@@ -198,6 +198,6 @@ export function renderHabitList(container, habits, logsMap) {
 
   for (const habit of habits) {
     const habitLogs = logsMap[habit.id] || {};
-    container.appendChild(renderHabitCard(habit, habitLogs));
+    container.appendChild(renderHabitCard(habit, habitLogs, selectedDate));
   }
 }

@@ -42,16 +42,34 @@ body::-webkit-scrollbar {
   white-space: nowrap;
 }
 
+.header__date-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex: 1;
+  justify-content: center;
+  min-width: 0;
+}
+
 .header__date {
   font-size: var(--font-size-meta);
   font-weight: var(--font-weight-meta);
   color: var(--text-secondary);
   text-align: center;
-  flex: 1;
-  padding: 0 var(--space-sm);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: pointer;
+}
+
+.header__date--today {
+  color: var(--accent-default);
+  cursor: default;
+}
+
+.date-nav__arrow--disabled {
+  opacity: 0.25;
+  pointer-events: none;
 }
 
 .header__actions {
@@ -207,6 +225,11 @@ body::-webkit-scrollbar {
 .dot--readonly {
   cursor: default;
   pointer-events: none;
+}
+
+.dot--selected {
+  outline: 2px solid var(--text-secondary);
+  outline-offset: 1px;
 }
 
 /* ── Empty State ── */

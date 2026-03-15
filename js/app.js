@@ -14,9 +14,12 @@ import {
 let habits = [];
 let logsMap = {};
 let requirementsMap = {};
+let selectedDate = getLocalDate();
 
 const habitListEl = document.getElementById('habit-list');
 const headerDateEl = document.getElementById('header-date');
+const datePrevBtn = document.getElementById('date-prev');
+const dateNextBtn = document.getElementById('date-next');
 const logoutBtn = document.getElementById('logout-btn');
 
 const popupOverlay = document.getElementById('req-popup-overlay');
@@ -30,12 +33,72 @@ const popupSkip = document.getElementById('req-popup-skip');
 const popupPartial = document.getElementById('req-popup-partial');
 const popupComplete = document.getElementById('req-popup-complete');
 
-function formatHeaderDate() {
-  return new Date().toLocaleDateString(undefined, {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  });
+function updateHeaderDate(date) {
+  const today = getLocalDate();
+  const isToday = date === today;
+
+  if (isToday) {
+    headerDateEl.textContent = 'Today';
+    headerDateEl.classList.add('header__date--today');
+  } else {
+    const d = new Date(date + 'T00:00:00');
+    headerDateEl.textContent = d.toLocaleDateString(undefined, {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+    });
+    headerDateEl.classList.remove('header__date--today');
+  }
+
+  const { startDate } = getDateRange();
+  datePrevBtn.disabled = date <= startDate;
+  datePrevBtn.classList.toggle('date-nav__arrow--disabled', date <= startDate);
+  dateNextBtn.disabled = isToday;
+  dateNextBtn.classList.toggle('date-nav__arrow--disabled', isToday);
+}
+
+function updateAllActionButtons(date) {
+  for (const card of habitListEl.querySelectorAll('.habit-card')) {
+    const habit = findHabitForCard(card);
+    if (!habit) continue;
+    const count = logsMap[habit.id]?.[date] || 0;
+    replaceActionButton(card, habit, count);
+  }
+}
+
+function updateDotHighlight(date) {
+  const today = getLocalDate();
+  for (const card of habitListEl.querySelectorAll('.habit-card')) {
+    for (const dot of card.querySelectorAll('.dot--selected')) {
+      dot.classList.remove('dot--selected');
+    }
+    if (date !== today) {
+      const dot = card.querySelector(`.dot[data-date="${date}"]`);
+      if (dot) dot.classList.add('dot--selected');
+    }
+  }
+}
+
+function goToPrevDay() {
+  const { startDate } = getDateRange();
+  if (selectedDate <= startDate) return;
+  const d = new Date(selectedDate + 'T00:00:00');
+  d.setDate(d.getDate() - 1);
+  selectedDate = getLocalDate(d);
+  updateHeaderDate(selectedDate);
+  updateAllActionButtons(selectedDate);
+  updateDotHighlight(selectedDate);
+}
+
+function goToNextDay() {
+  const today = getLocalDate();
+  if (selectedDate >= today) return;
+  const d = new Date(selectedDate + 'T00:00:00');
+  d.setDate(d.getDate() + 1);
+  selectedDate = getLocalDate(d);
+  updateHeaderDate(selectedDate);
+  updateAllActionButtons(selectedDate);
+  updateDotHighlight(selectedDate);
 }
 
 async function loadData() {
@@ -54,7 +117,7 @@ async function loadData() {
     requirementsMap[req.habit_id].push(req);
   }
 
-  renderHabitList(habitListEl, habits, logsMap);
+  renderHabitList(habitListEl, habits, logsMap, selectedDate);
 }
 
 function updateDotVisual(dot, count, dailyTarget, color, habit) {
@@ -81,10 +144,10 @@ function updateDotVisual(dot, count, dailyTarget, color, habit) {
   }
 }
 
-function replaceActionButton(card, habit, newCount) {
+function replaceActionButton(card, habit, newCount, animate = false) {
   const oldBtn = card.querySelector('.action-btn');
   const newBtn = renderActionButton(habit, newCount);
-  newBtn.classList.add('bounce');
+  if (animate) newBtn.classList.add('bounce');
   oldBtn.replaceWith(newBtn);
 }
 
@@ -255,15 +318,14 @@ async function handleToggle(habit, date, currentCount, dotOrCell, card) {
   logsMap[habit.id][date] = newCount;
   updateDotVisual(dotOrCell, newCount, habit.daily_target, habit.color, habit);
 
-  const today = getLocalDate();
-  if (card && date === today) replaceActionButton(card, habit, newCount);
+  if (card) replaceActionButton(card, habit, newCount, true);
 
   try {
     await toggleLog(habit.id, date, currentCount, habit.daily_target);
   } catch {
     logsMap[habit.id][date] = currentCount;
     updateDotVisual(dotOrCell, currentCount, habit.daily_target, habit.color, habit);
-    if (card && date === today) replaceActionButton(card, habit, currentCount);
+    if (card) replaceActionButton(card, habit, currentCount, true);
   }
 }
 
@@ -274,14 +336,25 @@ habitListEl.addEventListener('click', async (e) => {
     const habit = findHabitForCard(card);
     if (!habit) return;
 
-    const today = getLocalDate();
-    const currentCount = logsMap[habit.id]?.[today] || 0;
-    const todayDot = card.querySelector(`.dot[data-date="${today}"]`);
-    await handleToggle(habit, today, currentCount, todayDot || actionBtn, card);
+    const currentCount = logsMap[habit.id]?.[selectedDate] || 0;
+    const selectedDot = card.querySelector(`.dot[data-date="${selectedDate}"]`);
+    await handleToggle(habit, selectedDate, currentCount, selectedDot || actionBtn, card);
     return;
   }
-
 });
+
+headerDateEl.addEventListener('click', () => {
+  const today = getLocalDate();
+  if (selectedDate !== today) {
+    selectedDate = today;
+    updateHeaderDate(selectedDate);
+    updateAllActionButtons(selectedDate);
+    updateDotHighlight(selectedDate);
+  }
+});
+
+datePrevBtn.addEventListener('click', goToPrevDay);
+dateNextBtn.addEventListener('click', goToNextDay);
 
 logoutBtn.addEventListener('click', async () => {
   if (confirm('Are you sure you want to log out?')) {
@@ -291,7 +364,7 @@ logoutBtn.addEventListener('click', async () => {
 });
 
 // Init
-headerDateEl.textContent = formatHeaderDate();
+updateHeaderDate(selectedDate);
 
 requireAuth().then((session) => {
   if (session) loadData();
